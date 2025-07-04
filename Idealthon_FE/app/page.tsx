@@ -352,10 +352,10 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
                     className="pl-10 w-64 bg-white/40 backdrop-blur-xl border-white/30 rounded-2xl"
                   />
                 </div>
-                <Button className="w-12 h-12 bg-white/30 backdrop-blur-xl border-white/20 rounded-2xl p-0 btn-blue-hover hover:text-white">
+                <Button className="w-12 h-12 bg-white/30 backdrop-blur-xl border-white/20 rounded-2xl p-0 btn-blue-hover">
                   <Bell className="w-5 h-5 text-slate-700" />
                 </Button>
-                <Button className="w-12 h-12 bg-white/30 backdrop-blur-xl border-white/20 rounded-2xl p-0 btn-blue-hover hover:text-white">
+                <Button className="w-12 h-12 bg-white/30 backdrop-blur-xl border-white/20 rounded-2xl p-0 btn-blue-hover">
                   <User className="w-5 h-5 text-slate-700" />
                 </Button>
               </div>
@@ -394,7 +394,7 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
                     className={`flex-1 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 ${
                       selectedRole === role
                         ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-lg shadow-purple-500/25"
-                        : "bg-white/40 backdrop-blur-xl text-slate-700 border border-white/30 btn-blue-hover hover:text-white"
+                        : "bg-white/40 backdrop-blur-xl text-slate-700 border border-white/30 btn-blue-hover"
                     }`}
                   >
                     {role.charAt(0).toUpperCase() + role.slice(1)}
@@ -496,7 +496,7 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
                   { icon: Mic, label: "Audio", color: "bg-orange-500" },
                 ].map((item, index) => (
                   <div key={index} className="text-center group cursor-pointer flex flex-col items-center">
-                    <div className="w-16 h-16 bg-white/40 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-3 border border-white/30 shadow-lg btn-blue-hover group-hover:text-white">
+                    <div className="w-16 h-16 bg-white/40 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-3 border border-white/30 shadow-lg btn-blue-hover">
                       <div className={`w-8 h-8 ${item.color} rounded-2xl flex items-center justify-center`}>
                         <item.icon className="w-4 h-4 text-white" />
                       </div>
@@ -511,15 +511,15 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
             <Card className="bg-white/20 backdrop-blur-2xl border-white/30 rounded-3xl p-6 shadow-xl">
               <h3 className="text-xl font-semibold text-slate-800 mb-4 headline-enhanced">Progress</h3>
               <div className="space-y-4">
-                <div className="flex justify-between items-center p-2 rounded-xl btn-blue-hover hover:text-white cursor-pointer">
+                <div className="flex justify-between items-center p-2 rounded-xl btn-blue-hover cursor-pointer">
                   <span className="text-slate-600">Videos Processed</span>
                   <span className="font-bold text-slate-800">24</span>
                 </div>
-                <div className="flex justify-between items-center p-2 rounded-xl btn-blue-hover hover:text-white cursor-pointer">
+                <div className="flex justify-between items-center p-2 rounded-xl btn-blue-hover cursor-pointer">
                   <span className="text-slate-600">Ideas Generated</span>
                   <span className="font-bold text-slate-800">156</span>
                 </div>
-                <div className="flex justify-between items-center p-2 rounded-xl btn-blue-hover hover:text-white cursor-pointer">
+                <div className="flex justify-between items-center p-2 rounded-xl btn-blue-hover cursor-pointer">
                   <span className="text-slate-600">Content Created</span>
                   <span className="font-bold text-slate-800">89</span>
                 </div>
@@ -563,7 +563,7 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
                     className={`transition-all duration-300 rounded-lg ${
                       item.removed
                         ? "bg-red-50/50 opacity-60 hover:bg-red-100/50"
-                        : "btn-blue-hover hover:text-white"
+                        : "btn-blue-hover"
                     }`}
                   >
                     <td className="py-3 px-2 sm:px-4">
@@ -655,7 +655,7 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
                   setShowTranscript(true)
                   setShowIdeas(false)
                 }}
-                className="w-10 h-10 bg-white/40 backdrop-blur-xl border-white/30 rounded-xl p-0 btn-blue-hover hover:text-white"
+                className="w-10 h-10 bg-white/40 backdrop-blur-xl border-white/30 rounded-xl p-0 btn-blue-hover"
               >
                 <ArrowLeft className="w-5 h-5 text-slate-700" />
               </Button>
@@ -684,7 +684,7 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
                   {ideaData.map((item) => (
                     <tr
                       key={item.id}
-                      className={`btn-blue-hover hover:text-white transition-all duration-300 rounded-lg cursor-pointer ${
+                      className={`btn-blue-hover transition-all duration-300 rounded-lg cursor-pointer ${
                         selectedIdeaId === item.id ? 'bg-blue-50/50 ring-2 ring-blue-200' : ''
                       }`}
                       onClick={() => handleIdeaSelection(item.id.toString())}
@@ -783,7 +783,7 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
             <div className="flex items-center gap-3">
               <Button
                 onClick={handleBackToIdeas}
-                className="w-10 h-10 bg-white/40 backdrop-blur-xl border-white/30 rounded-xl p-0 btn-blue-hover hover:text-white"
+                className="w-10 h-10 bg-white/40 backdrop-blur-xl border-white/30 rounded-xl p-0 btn-blue-hover"
               >
                 <ArrowLeft className="w-5 h-5 text-slate-700" />
               </Button>

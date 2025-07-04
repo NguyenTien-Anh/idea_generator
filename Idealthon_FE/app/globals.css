@@ -18,8 +18,13 @@ body {
 
   .btn-blue-hover:hover {
     background: linear-gradient(135deg, hsl(var(--blue-gradient-from)), hsl(var(--blue-gradient-to)));
+    color: white;
     transform: translateY(-1px);
     box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.3);
+  }
+
+  .btn-blue-hover:hover * {
+    color: white !important;
   }
 
   .btn-blue-hover:active {
@@ -68,9 +73,14 @@ body {
   }
 
   .glass-blue-hover:hover {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(99, 102, 241, 0.2));
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(99, 102, 241, 0.8));
+    color: white;
     backdrop-filter: blur(20px);
     border-color: rgba(59, 130, 246, 0.3);
+  }
+
+  .glass-blue-hover:hover * {
+    color: white !important;
   }
 }
 
