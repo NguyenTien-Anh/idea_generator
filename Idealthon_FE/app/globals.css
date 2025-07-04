@@ -10,6 +10,68 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Blue Hover Effects */
+  .btn-blue-hover {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  .btn-blue-hover:hover {
+    background: linear-gradient(135deg, hsl(var(--blue-gradient-from)), hsl(var(--blue-gradient-to)));
+    transform: translateY(-1px);
+    box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.3);
+  }
+
+  .btn-blue-hover:active {
+    transform: translateY(0);
+  }
+
+  /* Enhanced Headlines */
+  .headline-enhanced {
+    @apply font-bold tracking-tight;
+    background: linear-gradient(135deg, #1e293b, #3b82f6);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .headline-modal {
+    @apply text-2xl font-bold tracking-tight;
+    background: linear-gradient(135deg, #6366f1, #3b82f6);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Accessibility improvements */
+  .btn-blue-hover:focus {
+    outline: 2px solid hsl(var(--blue-hover));
+    outline-offset: 2px;
+  }
+
+  .btn-blue-hover:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-blue-hover:disabled:hover {
+    transform: none !important;
+    background: inherit !important;
+    box-shadow: none !important;
+  }
+
+  /* Enhanced glassmorphism with blue accents */
+  .glass-blue-hover {
+    @apply transition-all duration-300 ease-in-out;
+    backdrop-filter: blur(16px);
+  }
+
+  .glass-blue-hover:hover {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(99, 102, 241, 0.2));
+    backdrop-filter: blur(20px);
+    border-color: rgba(59, 130, 246, 0.3);
+  }
 }
 
 @layer base {
@@ -47,6 +109,13 @@ body {
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Custom Blue Color Scheme */
+    --blue-hover: 217 91% 60%;
+    --blue-hover-light: 217 91% 65%;
+    --blue-hover-dark: 217 91% 55%;
+    --blue-gradient-from: 217 91% 60%;
+    --blue-gradient-to: 224 76% 48%;
   }
   .dark {
     --background: 0 0% 3.9%;
@@ -81,6 +150,13 @@ body {
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Custom Blue Color Scheme - Dark Mode */
+    --blue-hover: 217 91% 65%;
+    --blue-hover-light: 217 91% 70%;
+    --blue-hover-dark: 217 91% 60%;
+    --blue-gradient-from: 217 91% 65%;
+    --blue-gradient-to: 224 76% 53%;
   }
 }
 
