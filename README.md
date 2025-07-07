@@ -8,12 +8,6 @@ A full-stack application that transforms video/audio content into actionable con
 
 *Complete workflow demonstration: From audio upload to content generation*
 
-## � Application Overview
-
-![Application Demo](./public/demo.gif)
-
-*Complete workflow demonstration: From audio upload to content generation*
-
 ## �🚀 Features
 
 ### Core Functionality
@@ -194,47 +188,6 @@ Visit `http://localhost:8000/docs` for interactive API documentation (Swagger UI
 3. **Generate Ideas**: AI analyzes the transcript and suggests content ideas
 4. **Select Format**: Choose the desired content format (blog, post, video, infographic)
 5. **Generate Content**: Get detailed content creation guidelines
-
-## 🖥️ User Interface Guide
-
-### Main Dashboard
-![Main Interface](./public/main_ui.png)
-
-The main dashboard provides an elegant, modern interface with:
-- **Header Section**: Application branding with search functionality and user controls
-- **Featured Card**: Central workspace for audio content processing
-- **Navigation**: Intuitive layout with gradient backgrounds and glass-morphism design
-- **Status Indicators**: Real-time feedback on processing status
-
-### Step 1: Upload & Transcript Generation
-![Transcript Generation](./public/generate_transcript_ui.png)
-
-The transcript generation interface allows you to:
-- **File Upload**: Drag-and-drop or browse to select video/audio files
-- **Format Support**: Multiple formats including MP4, AVI, MOV, MP3, WAV, and more
-- **Progress Tracking**: Real-time upload and processing status
-- **Transcript Review**: View timestamped transcript with editing capabilities
-- **Language Support**: Vietnamese, English, and Japanese transcription
-
-### Step 2: AI-Powered Idea Generation
-![Ideas Generation](./public/generate_ideas_ui.png)
-
-The ideas generation screen features:
-- **Transcript Analysis**: AI processes your content to extract key insights
-- **Idea Categories**: Organized suggestions for different content types
-- **Interactive Selection**: Click on ideas to explore further details
-- **Format Recommendations**: Suggested content formats based on your content
-- **Refinement Options**: Edit and customize generated ideas
-
-### Step 3: Content Creation
-![Content Generation](./public/generate_content_ui.png)
-
-The content generation interface provides:
-- **Format Selection**: Choose from blog posts, social media, videos, or infographics
-- **Detailed Guidelines**: Comprehensive content creation instructions
-- **Markdown Support**: Rich text formatting for better readability
-- **Export Options**: Copy or download generated content
-- **Multi-language Output**: Content generation in Vietnamese and English
 
 ## 🔧 Configuration
 
