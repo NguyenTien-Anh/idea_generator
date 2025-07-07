@@ -23,7 +23,7 @@ body {
     box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.3);
   }
 
-  .btn-blue-hover:hover * {
+  .btn-blue-hover:hover *:not(.language-label-original):not(.language-label-vietnamese) {
     color: white !important;
   }
 
@@ -64,6 +64,47 @@ body {
     transform: none !important;
     background: inherit !important;
     box-shadow: none !important;
+  }
+
+  /* Language label styles - ensure readability even within btn-blue-hover elements */
+  .language-label-original {
+    @apply text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-md transition-all duration-300;
+  }
+
+  .language-label-original:hover {
+    background-color: rgb(226 232 240) !important; /* slate-200 */
+    color: rgb(71 85 105) !important; /* slate-600 */
+  }
+
+  .language-label-vietnamese {
+    @apply text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-md transition-all duration-300;
+  }
+
+  .language-label-vietnamese:hover {
+    background-color: rgb(219 234 254) !important; /* blue-100 */
+    color: rgb(29 78 216) !important; /* blue-700 */
+  }
+
+  /* Ensure language labels maintain their original colors even within btn-blue-hover */
+  .btn-blue-hover:hover .language-label-original {
+    background-color: rgb(241 245 249) !important; /* slate-100 */
+    color: rgb(100 116 139) !important; /* slate-500 */
+  }
+
+  .btn-blue-hover:hover .language-label-vietnamese {
+    background-color: rgb(239 246 255) !important; /* blue-50 */
+    color: rgb(37 99 235) !important; /* blue-600 */
+  }
+
+  /* Language label direct hover states (when hovering directly on the label) */
+  .btn-blue-hover:hover .language-label-original:hover {
+    background-color: rgb(226 232 240) !important; /* slate-200 */
+    color: rgb(71 85 105) !important; /* slate-600 */
+  }
+
+  .btn-blue-hover:hover .language-label-vietnamese:hover {
+    background-color: rgb(219 234 254) !important; /* blue-100 */
+    color: rgb(29 78 216) !important; /* blue-700 */
   }
 
   /* Enhanced glassmorphism with blue accents */

@@ -57,6 +57,9 @@ export default function Component() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  // State for tracking sub idea selections for each idea
+  const [subIdeaSelections, setSubIdeaSelections] = useState<Record<number, Record<string, boolean>>>({})
+
   // API hook for backend integration
   const {
     loadingStates,
@@ -129,6 +132,39 @@ export default function Component() {
     setIdeaData((prev) => prev.map((item) => (item.id === id ? { ...item, format } : item)))
   }
 
+  // Handle sub idea selection toggle
+  const toggleSubIdeaSelection = (ideaId: number, subIdeaId: string) => {
+    setSubIdeaSelections(prev => ({
+      ...prev,
+      [ideaId]: {
+        ...prev[ideaId],
+        [subIdeaId]: !prev[ideaId]?.[subIdeaId]
+      }
+    }))
+  }
+
+  // Initialize sub idea selections when idea data changes
+  const initializeSubIdeaSelections = (ideas: FrontendIdeaItem[]) => {
+    const initialSelections: Record<number, Record<string, boolean>> = {}
+    ideas.forEach(idea => {
+      initialSelections[idea.id] = {}
+      idea.subIdeas.forEach(subIdea => {
+        initialSelections[idea.id][subIdea.id] = subIdea.selected
+      })
+    })
+    setSubIdeaSelections(initialSelections)
+  }
+
+  // Get selected sub ideas for a specific idea
+  const getSelectedSubIdeas = (ideaId: number): string[] => {
+    const idea = ideaData.find(item => item.id === ideaId)
+    if (!idea) return []
+
+    return idea.subIdeas
+      .filter(subIdea => subIdeaSelections[ideaId]?.[subIdea.id] !== false)
+      .map(subIdea => subIdea.text)
+  }
+
   const handleIdeaSelection = (ideaId: string) => {
     const id = parseInt(ideaId)
     setSelectedIdeaId(id)
@@ -169,6 +205,7 @@ export default function Component() {
       const result = await generateIdeasFromTranscript(transcriptData)
       if (result) {
         setIdeaData(result)
+        initializeSubIdeaSelections(result) // Initialize sub idea selections
         setShowIdeas(true)
         setShowTranscript(false)
         toast.success(`${result.length} ideas generated successfully!`)
@@ -187,10 +224,18 @@ export default function Component() {
     clearError('contentError')
 
     try {
-      // Create a more detailed idea text for better content generation
-      const ideaText = `${selectedIdea.mainIdea}. ${selectedIdea.subIdea || ''}`
+      // Get only selected sub ideas for content generation
+      const selectedSubIdeas = getSelectedSubIdeas(selectedIdea.id)
+      const subIdeasText = selectedSubIdeas.length > 0 ? selectedSubIdeas.join('. ') : ''
 
-      const result = await generateContentFromIdea(selectedIdea.format.toLowerCase(), ideaText.trim())
+      // Create a more detailed idea text with only selected sub ideas
+      const ideaText = `${selectedIdea.mainIdea}. ${subIdeasText}`
+
+      const result = await generateContentFromIdea(
+        selectedIdea.format.toLowerCase(),
+        ideaText.trim(),
+        selectedSubIdeas
+      )
       if (result) {
         setGeneratedContent(result)
         setShowContentModal(true)
@@ -485,15 +530,20 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
                   <SelectValue placeholder="Select audio language" />
                 </SelectTrigger>
                 <SelectContent className="bg-white/90 backdrop-blur-xl border-white/30 rounded-2xl">
-                  <SelectItem value="auto">🌐 Auto-detect language</SelectItem>
+                  <SelectItem value="auto">Select audio language</SelectItem>
                   <SelectItem value="vietnamese">🇻🇳 Vietnamese</SelectItem>
                   <SelectItem value="english">🇬🇧 English</SelectItem>
                   <SelectItem value="japanese">🇯🇵 Japanese</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-slate-400 text-xs mt-3">
-                💡 All transcripts will be output in Vietnamese regardless of input language
-              </p>
+              <div className="mt-3 space-y-2">
+                <p className="text-slate-400 text-xs">
+                  💡 <strong>Vietnamese audio:</strong> Shows Vietnamese transcription only
+                </p>
+                <p className="text-slate-400 text-xs">
+                  🌍 <strong>Other languages:</strong> Shows original language + Vietnamese translation
+                </p>
+              </div>
             </Card>
 
             {/* Tools Grid */}
@@ -620,15 +670,50 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
                     </td>
                     <td className="py-3 px-2 sm:px-4">
                       <div className="flex items-center gap-3">
-                        <span
-                          className={`transition-all duration-300 flex-1 text-sm sm:text-base leading-relaxed ${
-                            item.removed
-                              ? "line-through text-red-400 opacity-75"
-                              : "text-slate-700"
-                          }`}
-                        >
-                          {item.text}
-                        </span>
+                        <div className="flex-1">
+                          {/* Show original language content first if it exists and is different from Vietnamese */}
+                          {item.originalText && item.language !== 'vietnamese' && (
+                            <div className="mb-2">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="language-label-original">
+                                  {item.language === 'english' ? '🇬🇧 English' :
+                                   item.language === 'japanese' ? '🇯🇵 Japanese' :
+                                   `Original (${item.language})`}
+                                </span>
+                              </div>
+                              <span
+                                className={`block text-sm sm:text-base leading-relaxed transition-all duration-300 ${
+                                  item.removed
+                                    ? "line-through text-red-400 opacity-75"
+                                    : "text-slate-600"
+                                }`}
+                              >
+                                {item.originalText}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Vietnamese translation */}
+                          <div>
+                            {item.originalText && item.language !== 'vietnamese' && (
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="language-label-vietnamese">
+                                  🇻🇳 Vietnamese Translation
+                                </span>
+                              </div>
+                            )}
+                            <span
+                              className={`block text-sm sm:text-base leading-relaxed transition-all duration-300 ${
+                                item.removed
+                                  ? "line-through text-red-400 opacity-75"
+                                  : "text-slate-700 font-medium"
+                              }`}
+                            >
+                              {item.text}
+                            </span>
+                          </div>
+                        </div>
+
                         {item.removed && (
                           <div className="flex items-center gap-1" role="status" aria-label="This transcript segment has been marked for removal by AI quality assessment">
                             <X className="w-3 h-3 text-red-500" aria-hidden="true" />
@@ -739,10 +824,70 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
                           </Label>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-slate-700">{item.paragraph}</td>
+                      <td className="py-3 px-4">
+                        <div className="text-slate-700">
+                          {/* Show original language content first if it exists and is different from Vietnamese */}
+                          {item.originalParagraph && item.language !== 'vietnamese' && (
+                            <div className="mb-2">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="language-label-original">
+                                  {item.language === 'english' ? '🇬🇧 English' :
+                                   item.language === 'japanese' ? '🇯🇵 Japanese' :
+                                   `Original (${item.language})`}
+                                </span>
+                              </div>
+                              <div className="text-sm text-slate-600 leading-relaxed">
+                                {item.originalParagraph}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Vietnamese translation or Vietnamese-only content */}
+                          <div>
+                            {item.originalParagraph && item.language !== 'vietnamese' && (
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="language-label-vietnamese">
+                                  🇻🇳 Vietnamese Translation
+                                </span>
+                              </div>
+                            )}
+                            <div className="text-sm text-slate-700 leading-relaxed font-medium">
+                              {item.paragraph}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
                       <td className="py-3 px-4 text-slate-600 font-mono text-sm">{item.timestamp}</td>
                       <td className="py-3 px-4 text-slate-700 font-semibold">{item.mainIdea}</td>
-                      <td className="py-3 px-4 text-slate-600">{item.subIdea}</td>
+                      <td className="py-3 px-4">
+                        <div className="space-y-2">
+                          {item.subIdeas.map((subIdea) => (
+                            <div
+                              key={subIdea.id}
+                              className={`flex items-start gap-2 p-2 rounded-lg transition-all duration-300 cursor-pointer btn-blue-hover ${
+                                subIdeaSelections[item.id]?.[subIdea.id] !== false
+                                  ? 'bg-blue-50/50 border border-blue-200'
+                                  : 'bg-slate-50/50 border border-slate-200'
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleSubIdeaSelection(item.id, subIdea.id)
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={subIdeaSelections[item.id]?.[subIdea.id] !== false}
+                                onChange={() => toggleSubIdeaSelection(item.id, subIdea.id)}
+                                className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              <span className="text-sm text-slate-600 leading-relaxed flex-1">
+                                {subIdea.text}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
                       <td className="py-3 px-4">
                         <Select
                           value={item.format}

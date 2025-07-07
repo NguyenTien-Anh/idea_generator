@@ -111,7 +111,8 @@ export function useApi() {
   // Generate content from idea
   const generateContentFromIdea = useCallback(async (
     format: string,
-    ideaText: string
+    ideaText: string,
+    selectedSubIdeas?: string[]
   ): Promise<string | null> => {
     setLoadingStates(prev => ({ ...prev, generatingContent: true }));
     setErrorStates(prev => ({ ...prev, contentError: null }));
@@ -121,7 +122,7 @@ export function useApi() {
         throw new Error('Format and idea text are required for content generation.');
       }
 
-      const response = await generateContent(format, ideaText);
+      const response = await generateContent(format, ideaText, selectedSubIdeas);
       return response.content;
     } catch (error) {
       const errorMessage = error instanceof ApiError 

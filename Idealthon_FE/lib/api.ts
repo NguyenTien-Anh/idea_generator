@@ -5,6 +5,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8
 export interface TranscriptItem {
   timestamp: string;
   transcript: string;
+  original_transcript: string;
+  language: string;
   remove: boolean;
 }
 
@@ -14,9 +16,12 @@ export interface TranscriptResponse {
 
 export interface IdeaItem {
   paragraph: string;
+  original_paragraph: string;
+  language: string;
   timestamp: string;
   main_idea: string;
   sub_idea: string;
+  supporting_ideas?: string[]; // Optional for backward compatibility
   format: string;
 }
 
@@ -33,15 +38,26 @@ export interface FrontendTranscriptItem {
   id: number;
   timeline: string;
   text: string;
+  originalText: string;
+  language: string;
   removed: boolean;
+}
+
+export interface SubIdeaItem {
+  id: string;
+  text: string;
+  selected: boolean;
 }
 
 export interface FrontendIdeaItem {
   id: number;
   paragraph: string;
+  originalParagraph: string;
+  language: string;
   timestamp: string;
   mainIdea: string;
-  subIdea: string;
+  subIdea: string; // Keep for backward compatibility
+  subIdeas: SubIdeaItem[]; // New array for individual sub ideas
   format: string;
 }
 
@@ -144,10 +160,18 @@ export async function generateIdeas(transcriptData: { timestamp: string; transcr
 }
 
 // Generate content from idea
-export async function generateContent(format: string, ideaText: string): Promise<ContentGenerationResponse> {
+export async function generateContent(
+  format: string,
+  ideaText: string,
+  selectedSubIdeas?: string[]
+): Promise<ContentGenerationResponse> {
   return apiRequest<ContentGenerationResponse>('/generate-content', {
     method: 'POST',
-    body: JSON.stringify({ format: format.toLowerCase(), idea_text: ideaText }),
+    body: JSON.stringify({
+      format: format.toLowerCase(),
+      idea_text: ideaText,
+      selected_sub_ideas: selectedSubIdeas || []
+    }),
   });
 }
 
@@ -157,26 +181,47 @@ export function transformTranscriptData(apiData: TranscriptItem[]): FrontendTran
     id: index + 1,
     timeline: formatTimestamp(item.timestamp),
     text: item.transcript,
+    originalText: item.original_transcript || "",
+    language: item.language || "vietnamese",
     removed: item.remove,
   }));
 }
 
 export function transformIdeaData(apiData: IdeaItem[]): FrontendIdeaItem[] {
-  return apiData.map((item, index) => ({
-    id: index + 1,
-    paragraph: item.paragraph,
-    timestamp: formatTimestamp(item.timestamp),
-    mainIdea: item.main_idea,
-    subIdea: item.sub_idea,
-    format: capitalizeFirst(item.format),
-  }));
+  return apiData.map((item, index) => {
+    // Parse supporting_ideas or fall back to splitting sub_idea
+    const supportingIdeas = item.supporting_ideas && item.supporting_ideas.length > 0
+      ? item.supporting_ideas
+      : item.sub_idea.split(' | ').filter(idea => idea.trim());
+
+    // Create SubIdeaItem array with unique IDs and default selection (all selected)
+    const subIdeas: SubIdeaItem[] = supportingIdeas.map((idea, subIndex) => ({
+      id: `${index + 1}-${subIndex + 1}`,
+      text: idea.trim(),
+      selected: true // Default to all selected
+    }));
+
+    return {
+      id: index + 1,
+      paragraph: item.paragraph,
+      originalParagraph: item.original_paragraph || "",
+      language: item.language || "vietnamese",
+      timestamp: formatTimestamp(item.timestamp),
+      mainIdea: item.main_idea,
+      subIdea: item.sub_idea, // Keep for backward compatibility
+      subIdeas: subIdeas, // New array for individual sub ideas
+      format: capitalizeFirst(item.format),
+    };
+  });
 }
 
 // Transform frontend transcript data back to API format for idea generation
-export function transformTranscriptForIdeaGeneration(frontendData: FrontendTranscriptItem[]): { timestamp: string; transcript: string; remove: boolean }[] {
+export function transformTranscriptForIdeaGeneration(frontendData: FrontendTranscriptItem[]): { timestamp: string; transcript: string; original_transcript: string; language: string; remove: boolean }[] {
   return frontendData.map(item => ({
     timestamp: item.timeline,
     transcript: item.text,
+    original_transcript: item.originalText || "",
+    language: item.language || "vietnamese",
     remove: item.removed, // Include the remove field for AI quality assessment
   }));
 }

@@ -1,3 +1,4 @@
+import time
 from typing import List, Dict
 import os
 import tempfile
@@ -35,6 +36,8 @@ app.add_middleware(
 class TranscriptItem(BaseModel):
     timestamp: str
     transcript: str
+    original_transcript: str = ""  # Original language transcript (empty for Vietnamese)
+    language: str = "vietnamese"  # Language of the original transcript
     remove: bool
 
 
@@ -48,9 +51,12 @@ class IdeaGenerationRequest(BaseModel):
 
 class IdeaItem(BaseModel):
     paragraph: str
+    original_paragraph: str = ""  # Original language paragraph (empty for Vietnamese)
+    language: str = "vietnamese"  # Language of the original content
     timestamp: str
     main_idea: str
-    sub_idea: str
+    sub_idea: str  # Keep for backward compatibility
+    supporting_ideas: List[str] = []  # New field for individual sub ideas
     format: str
 
 
@@ -61,6 +67,7 @@ class IdeaGenerationResponse(BaseModel):
 class ContentGenerationRequest(BaseModel):
     format: str
     idea_text: str
+    selected_sub_ideas: List[str] = []  # Optional list of selected sub ideas
 
 
 class ContentGenerationResponse(BaseModel):
@@ -72,26 +79,36 @@ MOCK_TRANSCRIPT_DATA = [
     {
         "timestamp": "00:00:15",
         "transcript": "Chào mừng đến với cuộc thảo luận hôm nay về lối sống bền vững và ý thức môi trường.",
+        "original_transcript": "",
+        "language": "vietnamese",
         "remove": False
     },
     {
         "timestamp": "00:00:45",
         "transcript": "Biến đổi khí hậu là một trong những vấn đề cấp bách nhất của thời đại chúng ta, ảnh hưởng đến mọi khía cạnh của cuộc sống hàng ngày.",
+        "original_transcript": "",
+        "language": "vietnamese",
         "remove": False
     },
     {
         "timestamp": "00:01:20",
         "transcript": "Những thay đổi đơn giản trong thói quen hàng ngày có thể tạo ra tác động đáng kể trong việc giảm lượng khí thải carbon.",
+        "original_transcript": "",
+        "language": "vietnamese",
         "remove": False
     },
     {
         "timestamp": "00:02:10",
         "transcript": "Từ việc lựa chọn các nguồn năng lượng tái tạo đến áp dụng các phương thức giao thông bền vững.",
+        "original_transcript": "",
+        "language": "vietnamese",
         "remove": False
     },
     {
         "timestamp": "00:02:45",
         "transcript": "Mỗi hành động cá nhân đều góp phần vào mục tiêu lớn hơn là bảo vệ môi trường và tạo ra tương lai tốt đẹp hơn.",
+        "original_transcript": "",
+        "language": "vietnamese",
         "remove": False
     }
 ]
@@ -99,6 +116,8 @@ MOCK_TRANSCRIPT_DATA = [
 MOCK_IDEAS_DATA = [
     {
         "paragraph": "Chào mừng đến với cuộc thảo luận hôm nay về lối sống bền vững và ý thức môi trường.",
+        "original_paragraph": "",
+        "language": "vietnamese",
         "timestamp": "00:00:15",
         "main_idea": "Giới thiệu về lối sống bền vững",
         "sub_idea": "Những kiến thức cơ bản về ý thức môi trường và cách áp dụng trong cuộc sống hàng ngày",
@@ -106,6 +125,8 @@ MOCK_IDEAS_DATA = [
     },
     {
         "paragraph": "Biến đổi khí hậu là một trong những vấn đề cấp bách nhất của thời đại chúng ta, ảnh hưởng đến mọi khía cạnh của cuộc sống hàng ngày.",
+        "original_paragraph": "",
+        "language": "vietnamese",
         "timestamp": "00:00:45",
         "main_idea": "Tác động của biến đổi khí hậu",
         "sub_idea": "Những ảnh hưởng của biến đổi khí hậu đến cuộc sống hàng ngày và cách ứng phó",
@@ -113,6 +134,8 @@ MOCK_IDEAS_DATA = [
     },
     {
         "paragraph": "Những thay đổi đơn giản trong thói quen hàng ngày có thể tạo ra tác động đáng kể trong việc giảm lượng khí thải carbon.",
+        "original_paragraph": "",
+        "language": "vietnamese",
         "timestamp": "00:01:20",
         "main_idea": "Thay đổi thói quen hàng ngày",
         "sub_idea": "Các mẹo thực tế để giảm lượng khí thải carbon thông qua thói quen sinh hoạt",
@@ -120,6 +143,8 @@ MOCK_IDEAS_DATA = [
     },
     {
         "paragraph": "Từ việc lựa chọn các nguồn năng lượng tái tạo đến áp dụng các phương thức giao thông bền vững.",
+        "original_paragraph": "",
+        "language": "vietnamese",
         "timestamp": "00:02:10",
         "main_idea": "Năng lượng tái tạo và giao thông bền vững",
         "sub_idea": "Hướng dẫn lựa chọn năng lượng sạch và phương tiện giao thông thân thiện môi trường",
@@ -127,6 +152,8 @@ MOCK_IDEAS_DATA = [
     },
     {
         "paragraph": "Mỗi hành động cá nhân đều góp phần vào mục tiêu lớn hơn là bảo vệ môi trường và tạo ra tương lai tốt đẹp hơn.",
+        "original_paragraph": "",
+        "language": "vietnamese",
         "timestamp": "00:02:45",
         "main_idea": "Tác động môi trường của cá nhân",
         "sub_idea": "Trách nhiệm cá nhân trong việc bảo vệ môi trường và xây dựng tương lai bền vững",
@@ -135,19 +162,31 @@ MOCK_IDEAS_DATA = [
 ]
 
 
-def parse_transcription_to_transcript_items(transcription_text: str) -> List[TranscriptItem]:
+def parse_transcription_to_transcript_items(transcription_text: str, original_transcription_text: str = "", language: str = "vietnamese") -> List[TranscriptItem]:
     """
-    Parse the transcription output from cut_audio.py and convert it to TranscriptItem format.
+    Parse the transcription output from cut_audio.py and convert it to TranscriptItem format with dual-language support.
 
     Args:
-        transcription_text: Raw transcription text in format:
+        transcription_text: Vietnamese transcription text in format:
                            <remove>true/false</remove><time>0:00 - 0:15</time> Transcribed text here
-                           <remove>true/false</remove><time>0:15 - 0:30</time> More transcribed text
+        original_transcription_text: Original language transcription text (empty for Vietnamese)
+        language: Language of the original transcript
 
     Returns:
-        List of TranscriptItem objects
+        List of TranscriptItem objects with both original and Vietnamese text
     """
     transcript_items = []
+
+    # Create a mapping of timestamps to original text for non-Vietnamese languages
+    original_text_map = {}
+    if original_transcription_text and language != 'vietnamese':
+        original_pattern = r'<remove>(true|false)</remove><time>(\d+:\d+)\s*-\s*(\d+:\d+)</time>\s*(.+?)(?=<remove>|\Z)'
+        original_matches = re.findall(original_pattern, original_transcription_text, re.DOTALL)
+
+        for _, start_time, end_time, text in original_matches:
+            timestamp_key = f"{start_time}-{end_time}"
+            cleaned_original_text = ' '.join(text.strip().split())
+            original_text_map[timestamp_key] = cleaned_original_text
 
     # Pattern to match <remove>true/false</remove><time>start - end</time> followed by text
     pattern = r'<remove>(true|false)</remove><time>(\d+:\d+)\s*-\s*(\d+:\d+)</time>\s*(.+?)(?=<remove>|\Z)'
@@ -155,33 +194,55 @@ def parse_transcription_to_transcript_items(transcription_text: str) -> List[Tra
     matches = re.findall(pattern, transcription_text, re.DOTALL)
 
     for remove_flag, start_time, end_time, text in matches:
-        # Clean up the text (remove extra whitespace and newlines)
-        cleaned_text = ' '.join(text.strip().split())
+        # Clean up the Vietnamese text (remove extra whitespace and newlines)
+        cleaned_vietnamese_text = ' '.join(text.strip().split())
 
-        if cleaned_text:  # Only add non-empty transcriptions
+        if cleaned_vietnamese_text:  # Only add non-empty transcriptions
             # Convert string "true"/"false" to boolean
             should_remove = remove_flag.lower() == "true"
 
+            # Get corresponding original text
+            timestamp_key = f"{start_time}-{end_time}"
+            original_text = original_text_map.get(timestamp_key, "") if language != 'vietnamese' else ""
+
             transcript_items.append(TranscriptItem(
-                timestamp=f"{start_time}-{end_time}",
-                transcript=cleaned_text,
+                timestamp=timestamp_key,
+                transcript=cleaned_vietnamese_text,
+                original_transcript=original_text,
+                language=language,
                 remove=should_remove
             ))
 
     # Fallback: try old format without <remove> tags for backward compatibility
     if not transcript_items:
+        # Create original text mapping for old format
+        original_text_map_old = {}
+        if original_transcription_text and language != 'vietnamese':
+            old_original_pattern = r'<time>(\d+:\d+)\s*-\s*(\d+:\d+)</time>\s*(.+?)(?=<time>|\Z)'
+            old_original_matches = re.findall(old_original_pattern, original_transcription_text, re.DOTALL)
+
+            for start_time, end_time, text in old_original_matches:
+                timestamp_key = f"{start_time}-{end_time}"
+                cleaned_original_text = ' '.join(text.strip().split())
+                original_text_map_old[timestamp_key] = cleaned_original_text
+
         # Pattern to match old format: <time>start - end</time> followed by text
         old_pattern = r'<time>(\d+:\d+)\s*-\s*(\d+:\d+)</time>\s*(.+?)(?=<time>|\Z)'
         old_matches = re.findall(old_pattern, transcription_text, re.DOTALL)
 
         for start_time, end_time, text in old_matches:
-            # Clean up the text (remove extra whitespace and newlines)
-            cleaned_text = ' '.join(text.strip().split())
+            # Clean up the Vietnamese text (remove extra whitespace and newlines)
+            cleaned_vietnamese_text = ' '.join(text.strip().split())
 
-            if cleaned_text:  # Only add non-empty transcriptions
+            if cleaned_vietnamese_text:  # Only add non-empty transcriptions
+                timestamp_key = f"{start_time}-{end_time}"
+                original_text = original_text_map_old.get(timestamp_key, "") if language != 'vietnamese' else ""
+
                 transcript_items.append(TranscriptItem(
-                    timestamp=f"{start_time}-{end_time}",
-                    transcript=cleaned_text,
+                    timestamp=timestamp_key,
+                    transcript=cleaned_vietnamese_text,
+                    original_transcript=original_text,
+                    language=language,
                     remove=False  # Default to not removing for old format
                 ))
 
@@ -264,8 +325,20 @@ def group_transcript_segments(transcript_items: List[TranscriptItem]) -> List[Di
                 start_timestamp = current_group[0].timestamp.split('-')[0] if '-' in current_group[0].timestamp else current_group[0].timestamp
                 end_timestamp = current_group[-1].timestamp.split('-')[1] if '-' in current_group[-1].timestamp else current_group[-1].timestamp
 
+                # Collect original text and determine language
+                current_original_text = []
+                language = "vietnamese"  # Default
+
+                for group_item in current_group:
+                    if hasattr(group_item, 'original_transcript') and group_item.original_transcript:
+                        current_original_text.append(group_item.original_transcript)
+                        if hasattr(group_item, 'language'):
+                            language = group_item.language
+
                 grouped_paragraphs.append({
                     'paragraph': ' '.join(current_text),
+                    'original_paragraph': ' '.join(current_original_text) if current_original_text else "",
+                    'language': language,
                     'timestamp': f"{start_timestamp}-{end_timestamp}",
                     'items': current_group
                 })
@@ -279,62 +352,60 @@ def group_transcript_segments(transcript_items: List[TranscriptItem]) -> List[Di
 
 async def generate_ideas_with_ai(paragraph_data: Dict) -> Dict:
     """
-    Generate content ideas using Google Gemini AI.
+    Generate content ideas using Google Gemini AI with dual-language support.
 
     Args:
-        paragraph_data: Dictionary with paragraph text and timestamp
+        paragraph_data: Dictionary with paragraph text, original paragraph, language, and timestamp
 
     Returns:
-        Dictionary with generated ideas
+        Dictionary with generated ideas including original language content
     """
     try:
-        # Create the structured prompt
-        prompt = f"""You are a content strategist assistant. Analyze the provided cleaned transcript paragraph and generate actionable content ideas.
+        # Create the structured prompt with dual-language support
+        original_paragraph = paragraph_data.get('original_paragraph', '')
+        language = paragraph_data.get('language', 'vietnamese')
 
-TRANSCRIPT PARAGRAPH: {paragraph_data['paragraph']}
-TIMESTAMP RANGE: {paragraph_data['timestamp']}
+        if original_paragraph and language != 'vietnamese':
+            prompt = f"""Analyze this transcript and return ONLY valid JSON with no additional text or explanations.
 
-Follow this structured analysis:
+ORIGINAL ({language.upper()}): {original_paragraph}
+VIETNAMESE: {paragraph_data['paragraph']}
+TIMESTAMP: {paragraph_data['timestamp']}
 
-STEP 1: Content Analysis
-1. Main Idea (1 concise sentence): Extract the central topic or key insight
-2. Supporting Ideas (3-5 sentences): Identify angles, subtopics, use cases, or perspectives that expand on the main idea
-3. Content Formats: Suggest 2-3 suitable formats from: short video, long-form video, infographic, blog article, social media post, photo series
-4. Target Audience: Specify who would find this valuable (e.g., entrepreneurs, students, professionals)
-5. Recommended Channels: Suggest 2-3 platforms (LinkedIn, YouTube, TikTok, Instagram, Medium, etc.)
-
-STEP 2: Output Format
-Return your analysis in this exact JSON structure:
+Return ONLY this JSON structure with all content in Vietnamese:
 {{
-  "main_idea": "string in Vietnamese",
-  "supporting_ideas": ["idea 1 in Vietnamese", "idea 2 in Vietnamese", "idea 3 in Vietnamese"],
-  "content_formats": ["format 1 in Vietnamese", "format 2 in Vietnamese"],
-  "target_audience": "target audience description in Vietnamese",
-  "recommended_channels": ["channel 1", "channel 2"],
+  "main_idea": "ý tưởng chính bằng tiếng Việt",
+  "supporting_ideas": ["ý tưởng phụ 1", "ý tưởng phụ 2", "ý tưởng phụ 3"],
+  "content_formats": ["định dạng 1", "định dạng 2"],
+  "target_audience": "đối tượng mục tiêu bằng tiếng Việt",
+  "recommended_channels": ["YouTube", "TikTok"],
   "paragraph": "{paragraph_data['paragraph']}",
+  "original_paragraph": "{original_paragraph}",
+  "language": "{language}",
   "timestamp": "{paragraph_data['timestamp']}"
 }}
 
-IMPORTANT LANGUAGE REQUIREMENTS:
-- ALL generated content (main_idea, supporting_ideas, content_formats, target_audience) MUST be written in VIETNAMESE language
-- Use natural Vietnamese terminology that is appropriate for Vietnamese users
-- Platform names (recommended_channels) can remain in English (e.g., "YouTube", "TikTok")
-- Ensure the response is valid JSON only, no additional text
+CRITICAL: Return ONLY the JSON object above. No explanations, no markdown, no additional text."""
+        else:
+            prompt = f"""Analyze this Vietnamese transcript and return ONLY valid JSON with no additional text or explanations.
 
-Vietnamese Content Format Examples:
-- Use "video ngắn" instead of "short video"
-- Use "video dài" instead of "long-form video"
-- Use "bài viết blog" instead of "blog article"
-- Use "bài đăng mạng xã hội" instead of "social media post"
-- Use "infographic" (can remain as is for technical terms)
-- Use "bộ ảnh" instead of "photo series"
+VIETNAMESE: {paragraph_data['paragraph']}
+TIMESTAMP: {paragraph_data['timestamp']}
 
-Vietnamese Target Audience Examples:
-- "sinh viên và người trẻ quan tâm đến phát triển bản thân"
-- "doanh nhân và chuyên gia kinh doanh"
-- "phụ huynh và giáo viên"
-- "người làm marketing và truyền thông"
-- "chuyên gia công nghệ và lập trình viên" """
+Return ONLY this JSON structure with all content in Vietnamese:
+{{
+  "main_idea": "ý tưởng chính bằng tiếng Việt",
+  "supporting_ideas": ["ý tưởng phụ 1", "ý tưởng phụ 2", "ý tưởng phụ 3"],
+  "content_formats": ["định dạng 1", "định dạng 2"],
+  "target_audience": "đối tượng mục tiêu bằng tiếng Việt",
+  "recommended_channels": ["YouTube", "TikTok"],
+  "paragraph": "{paragraph_data['paragraph']}",
+  "original_paragraph": "",
+  "language": "vietnamese",
+  "timestamp": "{paragraph_data['timestamp']}"
+}}
+
+CRITICAL: Return ONLY the JSON object above. No explanations, no markdown, no additional text."""
 
         # Initialize Gemini model
         model = genai.GenerativeModel('gemini-2.0-flash-lite')
@@ -344,29 +415,64 @@ Vietnamese Target Audience Examples:
 
         # Parse the JSON response
         try:
-            # Clean the response text by removing markdown code blocks
+            # Clean the response text more thoroughly
             response_text = response.text.strip()
-            if response_text.startswith('```json'):
-                response_text = response_text[7:]  # Remove ```json
-            if response_text.endswith('```'):
-                response_text = response_text[:-3]  # Remove ```
-            response_text = response_text.strip()
 
+            # Remove common prefixes that AI might add
+            prefixes_to_remove = [
+                'Okay, I\'m ready to analyze',
+                'Here is the analysis',
+                'Here\'s the analysis',
+                'Based on the transcript',
+                'Analysis:',
+                'Here is the JSON',
+                'Here\'s the JSON',
+                '```json',
+                '```'
+            ]
+
+            for prefix in prefixes_to_remove:
+                if response_text.lower().startswith(prefix.lower()):
+                    response_text = response_text[len(prefix):].strip()
+
+            # Remove markdown code blocks
+            if response_text.startswith('```json'):
+                response_text = response_text[7:].strip()
+            if response_text.startswith('```'):
+                response_text = response_text[3:].strip()
+            if response_text.endswith('```'):
+                response_text = response_text[:-3].strip()
+
+            # Find the first { and last } to extract just the JSON
+            start_idx = response_text.find('{')
+            end_idx = response_text.rfind('}')
+
+            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                response_text = response_text[start_idx:end_idx + 1]
+
+            print(f"Cleaned AI response for JSON parsing: {response_text[:200]}...")
             ai_response = json.loads(response_text)
 
-            # Convert to the expected format
+            # Convert to the expected format with dual-language support
+            supporting_ideas = ai_response.get('supporting_ideas', [])
             return {
                 'paragraph': ai_response.get('paragraph', paragraph_data['paragraph']),
+                'original_paragraph': ai_response.get('original_paragraph', paragraph_data.get('original_paragraph', '')),
+                'language': ai_response.get('language', paragraph_data.get('language', 'vietnamese')),
                 'timestamp': ai_response.get('timestamp', paragraph_data['timestamp']),
                 'main_idea': ai_response.get('main_idea', 'Content Idea'),
-                'sub_idea': ' | '.join(ai_response.get('supporting_ideas', [])),
+                'sub_idea': ' | '.join(supporting_ideas),  # Keep for backward compatibility
+                'supporting_ideas': supporting_ideas,  # New field for individual sub ideas
                 'format': ai_response.get('content_formats', ['blog'])[0] if ai_response.get('content_formats') else 'blog'
             }
 
         except json.JSONDecodeError as e:
             # Fallback if JSON parsing fails
-            print(f"Failed to parse AI response as JSON: {response.text}")
+            print(f"Failed to parse AI response as JSON.")
+            print(f"Original response: {response.text[:500]}...")
+            print(f"Cleaned response: {response_text[:500]}...")
             print(f"JSON decode error: {str(e)}")
+            print(f"Error position: line {e.lineno}, column {e.colno}")
             return create_fallback_idea(paragraph_data)
 
     except Exception as e:
@@ -389,17 +495,21 @@ def create_fallback_idea(paragraph_data: Dict) -> Dict:
     text = paragraph_data['paragraph']
     words = text.split()
 
-    # Simple heuristic for main idea
+    # Simple heuristic for main idea in Vietnamese
     if len(words) > 10:
         main_idea = ' '.join(words[:8]) + "..."
     else:
         main_idea = text[:50] + "..." if len(text) > 50 else text
 
+    fallback_sub_ideas = ['Cơ hội phát triển nội dung từ đoạn transcript này']
     return {
         'paragraph': paragraph_data['paragraph'],
+        'original_paragraph': paragraph_data.get('original_paragraph', ''),
+        'language': paragraph_data.get('language', 'vietnamese'),
         'timestamp': paragraph_data['timestamp'],
         'main_idea': main_idea,
-        'sub_idea': 'Content development opportunity',
+        'sub_idea': ' | '.join(fallback_sub_ideas),  # Keep for backward compatibility
+        'supporting_ideas': fallback_sub_ideas,  # New field for individual sub ideas
         'format': 'blog'
     }
 
@@ -433,6 +543,7 @@ async def video_transcript(
     """
     temp_file_path = None
     try:
+        st_time = time.time()
         # Validate file type (check both content type and file extension)
         valid_content_types = ('video/', 'audio/')
         valid_extensions = ('.mp4', '.avi', '.mov', '.mkv', '.mp3', '.wav', '.m4a', '.aac', '.flac')
@@ -470,11 +581,15 @@ async def video_transcript(
         # Initialize transcriber and process the audio
         transcriber = AudioSegmentTranscriber()
 
-        # Transcribe the audio file
-        transcription_text = transcriber.transcribe_file(temp_file_path, detected_language)
+        # Transcribe the audio file (returns tuple of original and vietnamese transcripts)
+        original_transcription_text, vietnamese_transcription_text = transcriber.transcribe_file(temp_file_path, detected_language)
 
-        # Parse transcription into the required format
-        transcript_items = parse_transcription_to_transcript_items(transcription_text)
+        # Parse transcription into the required format with dual-language support
+        transcript_items = parse_transcription_to_transcript_items(
+            vietnamese_transcription_text,
+            original_transcription_text,
+            detected_language
+        )
 
         if not transcript_items:
             # Fallback to mock data if transcription failed or returned empty
@@ -507,6 +622,7 @@ async def generate_ideas(request: IdeaGenerationRequest):
     Output: Ideas with paragraph, timestamp, main idea, sub idea, and format
     """
     try:
+        idea_time = time.time()
         # Validate input data
         if not request.data:
             raise HTTPException(status_code=400, detail="No transcript data provided")
@@ -548,6 +664,7 @@ async def generate_ideas(request: IdeaGenerationRequest):
                 generated_ideas.append(IdeaItem(**fallback_idea))
 
         print(f"Successfully generated {len(generated_ideas)} ideas")
+        print(f"Idea time: {time.time() - idea_time}:.2f")
 
         # Return generated ideas or fallback to mock data if none generated
         if generated_ideas:
@@ -563,23 +680,29 @@ async def generate_ideas(request: IdeaGenerationRequest):
         raise HTTPException(status_code=500, detail=f"Error generating ideas: {str(e)}")
 
 
-async def generate_content_with_ai(format_type: str, idea_text: str) -> str:
+async def generate_content_with_ai(format_type: str, idea_text: str, selected_sub_ideas: List[str] = None) -> str:
     """
     Generate content using Google Gemini AI with format-specific prompts.
 
     Args:
         format_type: Content format (video, blog, post, infographic)
         idea_text: The content idea to expand upon
+        selected_sub_ideas: Optional list of selected sub ideas for more focused content
 
     Returns:
         Generated content in Vietnamese
     """
     try:
+        # Prepare sub ideas text if provided
+        sub_ideas_text = ""
+        if selected_sub_ideas and len(selected_sub_ideas) > 0:
+            sub_ideas_text = f"\n\nSELECTED SUPPORTING IDEAS:\n" + "\n".join([f"- {idea}" for idea in selected_sub_ideas])
+
         # Format-specific prompt templates
         prompts = {
             "video": f"""You are a video scriptwriter assistant. Your task is to write a detailed video script in Vietnamese, structured for creating an Excel storyboard.
 
-CONTENT IDEA: {idea_text}
+CONTENT IDEA: {idea_text}{sub_ideas_text}
 TARGET FORMAT: Video Script
 
 Structure Requirements:
@@ -607,7 +730,7 @@ Provide a complete, detailed video script ready for production.""",
 
             "blog": f"""You are a professional blog writer. Create a comprehensive blog article in Vietnamese based on the provided content idea.
 
-CONTENT IDEA: {idea_text}
+CONTENT IDEA: {idea_text}{sub_ideas_text}
 TARGET FORMAT: Blog Article
 
 Structure Requirements:
@@ -640,7 +763,7 @@ Create a complete, publication-ready blog article.""",
 
             "post": f"""You are a social media content creator. Create engaging social media posts in Vietnamese based on the provided content idea.
 
-CONTENT IDEA: {idea_text}
+CONTENT IDEA: {idea_text}{sub_ideas_text}
 TARGET FORMAT: Social Media Posts
 
 Create content for multiple platforms:
@@ -673,7 +796,7 @@ Provide complete, ready-to-post content for each platform.""",
 
             "infographic": f"""You are an infographic content designer. Create detailed content structure for an infographic in Vietnamese based on the provided idea.
 
-CONTENT IDEA: {idea_text}
+CONTENT IDEA: {idea_text}{sub_ideas_text}
 TARGET FORMAT: Infographic Content
 
 Structure Requirements:
@@ -744,6 +867,7 @@ async def generate_content(request: ContentGenerationRequest):
     Output: Generated content in Vietnamese
     """
     try:
+        content_time = time.time()
         print(f"Generating content for format: {request.format}, idea: {request.idea_text[:100]}...")
 
         # Validate format
@@ -758,10 +882,15 @@ async def generate_content(request: ContentGenerationRequest):
         if not request.idea_text or len(request.idea_text.strip()) == 0:
             raise HTTPException(status_code=400, detail="idea_text cannot be empty")
 
-        # Generate content using AI
-        generated_content = await generate_content_with_ai(request.format, request.idea_text)
+        # Generate content using AI with selected sub ideas
+        generated_content = await generate_content_with_ai(
+            request.format,
+            request.idea_text,
+            request.selected_sub_ideas
+        )
 
         print(f"Successfully generated {len(generated_content)} characters of content")
+        print(f"Content time: {time.time() - content_time}:.2f")
 
         return ContentGenerationResponse(content=generated_content)
 

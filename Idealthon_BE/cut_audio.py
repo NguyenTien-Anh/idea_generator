@@ -1,6 +1,7 @@
 import os
 import re
 import tempfile
+import time
 from typing import List, Tuple, Optional
 from pathlib import Path
 
@@ -296,7 +297,7 @@ class AudioSegmentTranscriber:
         except Exception as e:
             raise Exception(f"Error splitting audio file: {str(e)}")
     
-    def transcribe_segment(self, audio_segment: AudioSegment, language: str = 'vietnamese') -> str:
+    def transcribe_segment(self, audio_segment: AudioSegment, language: str = 'vietnamese') -> tuple[str, str]:
         """
         Transcribe a single audio segment using two-step process: transcription then translation.
 
@@ -305,7 +306,7 @@ class AudioSegmentTranscriber:
             language: Language for transcription ('vietnamese', 'english', 'japanese')
 
         Returns:
-            Transcribed text with timestamps in Vietnamese
+            Tuple of (original_transcript, vietnamese_transcript)
         """
         try:
             # Create a temporary file for the segment
@@ -333,7 +334,7 @@ class AudioSegmentTranscriber:
                 if language == 'vietnamese':
                     # Already in Vietnamese, return as-is
                     print("Language is Vietnamese, skipping translation step")
-                    return original_transcript
+                    return original_transcript, original_transcript
                 else:
                     # Translate to Vietnamese
                     translation_key = f"{language}_to_vietnamese"
@@ -352,10 +353,10 @@ class AudioSegmentTranscriber:
 
                         vietnamese_transcript = translation_response.text
                         print(f"Step 2 complete: {len(vietnamese_transcript)} characters")
-                        return vietnamese_transcript
+                        return original_transcript, vietnamese_transcript
                     else:
                         print(f"Warning: No translation prompt for {language}, returning original transcript")
-                        return original_transcript
+                        return original_transcript, original_transcript
 
             finally:
                 # Clean up temporary file
@@ -431,16 +432,16 @@ class AudioSegmentTranscriber:
         
         return re.sub(pattern, replace_timestamp, transcription)
     
-    def transcribe_file(self, audio_file_path: str, language: str = 'vietnamese') -> str:
+    def transcribe_file(self, audio_file_path: str, language: str = 'vietnamese') -> tuple[str, str]:
         """
         Transcribe an entire MP3 file by splitting it into segments.
-        
+
         Args:
             audio_file_path: Path to the MP3 audio file
             language: Language for transcription ('vietnamese', 'english', 'japanese')
-            
+
         Returns:
-            Complete transcription with adjusted timestamps
+            Tuple of (original_transcription, vietnamese_transcription) with adjusted timestamps
         """
         try:
             # Validate file exists
@@ -457,32 +458,37 @@ class AudioSegmentTranscriber:
             # Split audio into segments
             segments = self.split_audio(audio_file_path)
             print(f"Split audio into {len(segments)} segments")
-            
-            combined_transcription = []
-            
+
+            combined_original_transcription = []
+            combined_vietnamese_transcription = []
+            transcript_st_time = time.time()
             # Process each segment
             for i, (segment, start_time_ms) in enumerate(segments):
                 print(f"Processing segment {i+1}/{len(segments)} (starting at {self.format_timestamp(start_time_ms)})")
-                
-                # Transcribe the segment
-                segment_transcription = self.transcribe_segment(segment, language)
-                
-                # Adjust timestamps
-                adjusted_transcription = self.adjust_timestamps(segment_transcription, start_time_ms)
-                
-                combined_transcription.append(adjusted_transcription)
-            
+
+                # Transcribe the segment (returns tuple of original and vietnamese)
+                original_transcription, vietnamese_transcription = self.transcribe_segment(segment, language)
+
+                # Adjust timestamps for both transcriptions
+                adjusted_original = self.adjust_timestamps(original_transcription, start_time_ms)
+                adjusted_vietnamese = self.adjust_timestamps(vietnamese_transcription, start_time_ms)
+
+                combined_original_transcription.append(adjusted_original)
+                combined_vietnamese_transcription.append(adjusted_vietnamese)
+
+            print(f"Transcript_time: {time.time() - transcript_st_time}:.2f")
             # Combine all transcriptions
-            final_transcription = '\n'.join(combined_transcription)
-            
+            final_original_transcription = '\n'.join(combined_original_transcription)
+            final_vietnamese_transcription = '\n'.join(combined_vietnamese_transcription)
+
             print("Transcription completed successfully")
-            return final_transcription
+            return final_original_transcription, final_vietnamese_transcription
             
         except Exception as e:
             raise Exception(f"Error transcribing file: {str(e)}")
 
 
-def transcribe_audio_file(audio_file_path: str, language: str = 'vietnamese', output_file: Optional[str] = None) -> str:
+def transcribe_audio_file(audio_file_path: str, language: str = 'vietnamese', output_file: Optional[str] = None) -> tuple[str, str]:
     """
     Convenience function to transcribe an audio file.
 
@@ -492,17 +498,25 @@ def transcribe_audio_file(audio_file_path: str, language: str = 'vietnamese', ou
         output_file: Optional path to save the transcription result
 
     Returns:
-        Complete transcription with adjusted timestamps
+        Tuple of (original_transcription, vietnamese_transcription) with adjusted timestamps
     """
     transcriber = AudioSegmentTranscriber()
-    result = transcriber.transcribe_file(audio_file_path, language)
+    original_result, vietnamese_result = transcriber.transcribe_file(audio_file_path, language)
 
     if output_file:
-        with open(output_file, 'w', encoding='utf-8') as f:
-            f.write(result)
-        print(f"Transcription saved to: {output_file}")
+        # Save both transcriptions
+        base_name = output_file.rsplit('.', 1)[0] if '.' in output_file else output_file
+        original_file = f"{base_name}_original.txt"
+        vietnamese_file = f"{base_name}_vietnamese.txt"
 
-    return result
+        with open(original_file, 'w', encoding='utf-8') as f:
+            f.write(original_result)
+        with open(vietnamese_file, 'w', encoding='utf-8') as f:
+            f.write(vietnamese_result)
+        print(f"Original transcription saved to: {original_file}")
+        print(f"Vietnamese transcription saved to: {vietnamese_file}")
+
+    return original_result, vietnamese_result
 
 
 def main():
@@ -522,11 +536,15 @@ def main():
     output_file = sys.argv[3] if len(sys.argv) > 3 else None
 
     try:
-        result = transcribe_audio_file(audio_file_path, language, output_file)
+        original_result, vietnamese_result = transcribe_audio_file(audio_file_path, language, output_file)
         print("\n" + "="*50)
-        print("TRANSCRIPTION RESULT:")
+        print("ORIGINAL TRANSCRIPTION RESULT:")
         print("="*50)
-        print(result)
+        print(original_result)
+        print("\n" + "="*50)
+        print("VIETNAMESE TRANSCRIPTION RESULT:")
+        print("="*50)
+        print(vietnamese_result)
 
     except Exception as e:
         print(f"Error: {str(e)}")
