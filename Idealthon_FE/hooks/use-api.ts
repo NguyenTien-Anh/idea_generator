@@ -13,7 +13,7 @@ import {
 
 // Loading states for different operations
 interface LoadingStates {
-  uploadingVideo: boolean;
+  uploadingAudio: boolean;
   generatingIdeas: boolean;
   generatingContent: boolean;
 }
@@ -27,7 +27,7 @@ interface ErrorStates {
 
 export function useApi() {
   const [loadingStates, setLoadingStates] = useState<LoadingStates>({
-    uploadingVideo: false,
+    uploadingAudio: false,
     generatingIdeas: false,
     generatingContent: false,
   });
@@ -52,24 +52,28 @@ export function useApi() {
     });
   }, []);
 
-  // Upload video and get transcript
-  const uploadVideo = useCallback(async (file: File): Promise<FrontendTranscriptItem[] | null> => {
-    setLoadingStates(prev => ({ ...prev, uploadingVideo: true }));
+  // Upload audio and get transcript
+  const uploadAudio = useCallback(async (
+    file: File,
+    language?: string
+  ): Promise<FrontendTranscriptItem[] | null> => {
+    setLoadingStates(prev => ({ ...prev, uploadingAudio: true }));
     setErrorStates(prev => ({ ...prev, uploadError: null }));
 
     try {
-      const response = await uploadVideoForTranscript(file);
+      console.log("language: ", language);
+      const response = await uploadVideoForTranscript(file, language);
       const transformedData = transformTranscriptData(response.data);
       return transformedData;
     } catch (error) {
-      const errorMessage = error instanceof ApiError 
-        ? error.message 
-        : 'Failed to upload video. Please try again.';
-      
+      const errorMessage = error instanceof ApiError
+        ? error.message
+        : 'Failed to upload audio file. Please try again.';
+
       setErrorStates(prev => ({ ...prev, uploadError: errorMessage }));
       return null;
     } finally {
-      setLoadingStates(prev => ({ ...prev, uploadingVideo: false }));
+      setLoadingStates(prev => ({ ...prev, uploadingAudio: false }));
     }
   }, []);
 
@@ -134,8 +138,8 @@ export function useApi() {
   }, []);
 
   // Check if any operation is loading
-  const isLoading = loadingStates.uploadingVideo || 
-                   loadingStates.generatingIdeas || 
+  const isLoading = loadingStates.uploadingAudio ||
+                   loadingStates.generatingIdeas ||
                    loadingStates.generatingContent;
 
   // Check if there are any errors
@@ -153,7 +157,7 @@ export function useApi() {
     hasErrors,
     
     // API functions
-    uploadVideo,
+    uploadAudio,
     generateIdeasFromTranscript,
     generateContentFromIdea,
     

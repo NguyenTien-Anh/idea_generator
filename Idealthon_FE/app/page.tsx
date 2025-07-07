@@ -13,6 +13,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { useApi } from "@/hooks/use-api"
 import { toast } from "sonner"
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { FrontendTranscriptItem, FrontendIdeaItem } from "@/lib/api"
 import {
   Cloud,
@@ -31,14 +33,16 @@ import {
   Mic,
   ArrowLeft,
   AlertCircle,
+  AlertTriangle,
   Loader2,
   Copy,
+  X,
   Check,
 } from "lucide-react"
 
 export default function Component() {
   const [selectedRole, setSelectedRole] = useState<"editor" | "creator">("editor")
-  const [selectedLanguage, setSelectedLanguage] = useState("en")
+  const [selectedAudioLanguage, setSelectedAudioLanguage] = useState("auto")
   const [uploadProgress, setUploadProgress] = useState(0)
   const [showTranscript, setShowTranscript] = useState(false)
   const [showIdeas, setShowIdeas] = useState(false)
@@ -46,6 +50,7 @@ export default function Component() {
   const [selectedContentType, setSelectedContentType] = useState<string>("")
   const [searchQuery, setSearchQuery] = useState("")
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+
   const [generatedContent, setGeneratedContent] = useState<string>("")
   const [selectedIdeaId, setSelectedIdeaId] = useState<number | null>(null)
   const [selectedIdea, setSelectedIdea] = useState<FrontendIdeaItem | null>(null)
@@ -56,7 +61,7 @@ export default function Component() {
   const {
     loadingStates,
     errorStates,
-    uploadVideo,
+    uploadAudio,
     generateIdeasFromTranscript,
     generateContentFromIdea,
     clearError,
@@ -74,8 +79,8 @@ export default function Component() {
     if (!file) return
 
     // Validate file type
-    if (!file.type.startsWith('video/') && !file.type.startsWith('audio/')) {
-      toast.error('Please upload a video or audio file')
+    if (!file.type.startsWith('audio/')) {
+      toast.error('Please upload an audio file')
       return
     }
 
@@ -97,14 +102,14 @@ export default function Component() {
 
   const handleGenerateTranscript = async () => {
     if (!uploadedFile) {
-      toast.error('Please upload a video file first')
+      toast.error('Please upload an audio file first')
       return
     }
 
     clearError('uploadError')
 
     try {
-      const result = await uploadVideo(uploadedFile)
+      const result = await uploadAudio(uploadedFile, selectedAudioLanguage)
       if (result) {
         setTranscriptData(result)
         setShowTranscript(true)
@@ -219,6 +224,8 @@ export default function Component() {
       toast.error('Failed to copy content')
     }
   }
+
+
 
   const getContentPreview = (type: string) => {
     switch (type) {
@@ -337,8 +344,8 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
                   <Sparkles className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl headline-enhanced">Video Ideas Generator</h1>
-                  <p className="text-slate-600 font-medium">Discover a treasure of ideas from video</p>
+                  <h1 className="text-3xl headline-enhanced">Audio Ideas Generator</h1>
+                  <p className="text-slate-600 font-medium">Discover a treasure of ideas from audio</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -376,8 +383,8 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
                   <FileText className="w-8 h-8" />
                 </div>
                 <div>
-                  <h2 className="text-4xl font-bold mb-2 text-white">Video Ideas</h2>
-                  <p className="text-white/80 text-lg font-medium">AI-powered content generation from your videos</p>
+                  <h2 className="text-4xl font-bold mb-2 text-white">Audio Ideas</h2>
+                  <p className="text-white/80 text-lg font-medium">AI-powered content generation from your audio</p>
                 </div>
               </div>
               <div className="text-white/50 text-sm">Ready to transform your content</div>
@@ -408,18 +415,18 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
               <div className="relative group">
                 <input
                   type="file"
-                  accept="video/*"
+                  accept="audio/*"
                   onChange={handleFileUpload}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 />
                 <div className="border-2 border-dashed border-slate-300 rounded-3xl p-12 transition-all duration-300 group-hover:border-purple-400 group-hover:bg-white/10 bg-white/5 backdrop-blur-xl">
                   <div className="flex flex-col items-center space-y-4">
                     <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-blue-500 rounded-3xl flex items-center justify-center shadow-lg">
-                      <Cloud className="w-10 h-10 text-white" />
+                      <Mic className="w-10 h-10 text-white" />
                     </div>
                     <div className="text-center">
-                      <h3 className="text-2xl font-semibold text-slate-700 mb-2 headline-enhanced">Upload Video File</h3>
-                      <p className="text-slate-500">Drag and drop your video here or click to browse</p>
+                      <h3 className="text-2xl font-semibold text-slate-700 mb-2 headline-enhanced">Upload Audio File</h3>
+                      <p className="text-slate-500">Drag and drop your audio file here or click to browse</p>
                     </div>
                   </div>
                 </div>
@@ -431,15 +438,16 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
                 )}
               </div>
             </Card>
+            
 
             {/* Action Buttons */}
             <div className="flex justify-center">
               <Button
                 onClick={handleGenerateTranscript}
-                disabled={!uploadedFile || loadingStates.uploadingVideo}
+                disabled={!uploadedFile || loadingStates.uploadingAudio}
                 className="bg-gradient-to-r from-purple-500 to-blue-500 text-white py-6 px-12 rounded-2xl font-semibold text-lg shadow-lg shadow-purple-500/25 btn-blue-hover disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:transform-none"
               >
-                {loadingStates.uploadingVideo ? (
+                {loadingStates.uploadingAudio ? (
                   <>
                     <Loader2 className="w-6 h-6 mr-3 animate-spin" />
                     Processing...
@@ -468,19 +476,24 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
 
           {/* Right Column */}
           <div className="space-y-6">
-            {/* Language Selector */}
+            {/* Audio Language Selector */}
             <Card className="bg-white/20 backdrop-blur-2xl border-white/30 rounded-3xl p-6 shadow-xl">
-              <h3 className="text-xl font-semibold text-slate-800 mb-4 headline-enhanced">Select Language</h3>
-              <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+              <h3 className="text-xl font-semibold text-slate-800 mb-4 headline-enhanced">Audio Language</h3>
+              <p className="text-slate-500 text-sm mb-4">Select the language of your audio file for better transcription accuracy</p>
+              <Select value={selectedAudioLanguage} onValueChange={setSelectedAudioLanguage}>
                 <SelectTrigger className="bg-white/40 backdrop-blur-xl border-white/30 text-slate-700 rounded-2xl h-12">
-                  <SelectValue />
+                  <SelectValue placeholder="Select audio language" />
                 </SelectTrigger>
                 <SelectContent className="bg-white/90 backdrop-blur-xl border-white/30 rounded-2xl">
-                  <SelectItem value="vi">🇻🇳 Vietnamese</SelectItem>
-                  <SelectItem value="en">🇬🇧 English</SelectItem>
-                  <SelectItem value="jp">🇯🇵 Japanese</SelectItem>
+                  <SelectItem value="auto">🌐 Auto-detect language</SelectItem>
+                  <SelectItem value="vietnamese">🇻🇳 Vietnamese</SelectItem>
+                  <SelectItem value="english">🇬🇧 English</SelectItem>
+                  <SelectItem value="japanese">🇯🇵 Japanese</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-slate-400 text-xs mt-3">
+                💡 All transcripts will be output in Vietnamese regardless of input language
+              </p>
             </Card>
 
             {/* Tools Grid */}
@@ -512,7 +525,7 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
               <h3 className="text-xl font-semibold text-slate-800 mb-4 headline-enhanced">Progress</h3>
               <div className="space-y-4">
                 <div className="flex justify-between items-center p-2 rounded-xl btn-blue-hover cursor-pointer">
-                  <span className="text-slate-600">Videos Processed</span>
+                  <span className="text-slate-600">Audio Files Processed</span>
                   <span className="font-bold text-slate-800">24</span>
                 </div>
                 <div className="flex justify-between items-center p-2 rounded-xl btn-blue-hover cursor-pointer">
@@ -531,24 +544,26 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
 
       {/* Transcript Modal */}
       <Dialog open={showTranscript} onOpenChange={setShowTranscript}>
-        <DialogContent className="max-w-5xl bg-white/90 backdrop-blur-xl border-white/30 text-slate-800 rounded-3xl z-50">
-          <DialogHeader>
-            <div className="flex-1">
-              <DialogTitle className="headline-modal">Generated Transcript</DialogTitle>
-              <p className="text-sm text-slate-600 mt-1">
-                Review and edit your transcript • {transcriptData.length} items • {transcriptData.filter(item => !item.removed).length} selected
-              </p>
-            </div>
-          </DialogHeader>
-          <div className="overflow-x-auto max-h-96 overflow-y-auto">
-            {transcriptData.length === 0 ? (
-              <div className="text-center py-12">
-                <FileText className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                <p className="text-slate-500 text-lg font-medium">No transcript data available</p>
-                <p className="text-slate-400 text-sm">Upload a video and generate transcript to see data here</p>
+        <DialogContent className="modal-fullscreen bg-white/90 backdrop-blur-xl border-white/30 text-slate-800 z-50">
+          <div className="modal-fullscreen-content p-6">
+            <DialogHeader>
+              <div className="flex-1">
+                <DialogTitle className="headline-modal">Generated Transcript</DialogTitle>
+                <p className="text-sm text-slate-600 mt-1">
+                  Review and edit your transcript • {transcriptData.length} items • {transcriptData.filter(item => !item.removed).length} selected
+                </p>
               </div>
-            ) : (
-              <table className="w-full" role="table" aria-label="Transcript data table">
+            </DialogHeader>
+            <div className="modal-fullscreen-body mt-6">
+              {transcriptData.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                  <p className="text-slate-500 text-lg font-medium">No transcript data available</p>
+                  <p className="text-slate-400 text-sm">Upload an audio file and generate transcript to see data here</p>
+                </div>
+              ) : (
+                <div className="transcript-table-container h-full border border-slate-200 rounded-lg">
+                  <table className="transcript-table w-full" role="table" aria-label="Transcript data table">
                 <thead>
                   <tr className="border-b border-slate-200">
                     <th className="text-center py-3 px-2 sm:px-4 text-slate-700 font-semibold w-16 sm:w-20" scope="col">Remove</th>
@@ -560,19 +575,33 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
                   {transcriptData.map((item) => (
                   <tr
                     key={item.id}
-                    className={`transition-all duration-300 rounded-lg ${
+                    className={`transition-all duration-300 rounded-lg border-l-4 ${
                       item.removed
-                        ? "bg-red-50/50 opacity-60 hover:bg-red-100/50"
-                        : "btn-blue-hover"
+                        ? "bg-red-50/80 border-l-red-400 shadow-sm hover:bg-red-100/80 hover:shadow-md"
+                        : "border-l-transparent btn-blue-hover"
                     }`}
+                    role="row"
+                    aria-label={item.removed ? `Transcript item marked for removal: ${item.text}` : `Transcript item: ${item.text}`}
                   >
                     <td className="py-3 px-2 sm:px-4">
-                      <div className="flex items-center justify-center">
+                      <div className="flex items-center justify-center gap-2">
+                        {item.removed && (
+                          <div
+                            className="flex items-center justify-center w-5 h-5 bg-red-100 rounded-full"
+                            title="AI marked for removal"
+                            role="img"
+                            aria-label="Warning: This transcript segment has been marked for removal by AI quality assessment"
+                          >
+                            <AlertTriangle className="w-3 h-3 text-red-500" aria-hidden="true" />
+                          </div>
+                        )}
                         <Checkbox
                           checked={item.removed}
                           onCheckedChange={() => toggleTranscriptRemove(item.id)}
                           className={`transition-colors duration-200 ${
-                            item.removed ? "border-red-400 data-[state=checked]:bg-red-500" : ""
+                            item.removed
+                              ? "border-red-400 data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
+                              : "border-slate-300 hover:border-slate-400"
                           }`}
                         />
                         <Label htmlFor={`transcript-${item.id}`} className="sr-only">
@@ -581,93 +610,106 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
                       </div>
                     </td>
                     <td className="py-3 px-2 sm:px-4">
-                      <span className="text-slate-600 font-mono text-xs sm:text-sm font-medium">
+                      <span className={`font-mono text-xs sm:text-sm font-medium transition-colors duration-300 ${
+                        item.removed
+                          ? "text-red-400 line-through"
+                          : "text-slate-600"
+                      }`}>
                         {item.timeline}
                       </span>
                     </td>
                     <td className="py-3 px-2 sm:px-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         <span
-                          className={`text-slate-700 transition-all duration-300 flex-1 text-sm sm:text-base leading-relaxed ${
-                            item.removed ? "line-through text-slate-400" : ""
+                          className={`transition-all duration-300 flex-1 text-sm sm:text-base leading-relaxed ${
+                            item.removed
+                              ? "line-through text-red-400 opacity-75"
+                              : "text-slate-700"
                           }`}
                         >
                           {item.text}
                         </span>
                         {item.removed && (
-                          <span className="text-xs text-red-500 font-medium bg-red-50 px-2 py-1 rounded-full whitespace-nowrap">
-                            Excluded
-                          </span>
+                          <div className="flex items-center gap-1" role="status" aria-label="This transcript segment has been marked for removal by AI quality assessment">
+                            <X className="w-3 h-3 text-red-500" aria-hidden="true" />
+                            <span className="text-xs text-red-600 font-semibold bg-red-100 border border-red-200 px-2 py-1 rounded-md whitespace-nowrap shadow-sm">
+                              AI Excluded
+                            </span>
+                            <span className="sr-only">This segment was automatically marked for removal due to low quality content such as filler words or interruptions</span>
+                          </div>
                         )}
                       </div>
                     </td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
+                  </tbody>
+                </table>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-4 pt-4 mt-6">
+              <Button className="flex-1 bg-green-500 text-white rounded-2xl py-3 btn-blue-hover">
+                <Download className="w-5 h-5 mr-2" />
+                Export Transcript
+              </Button>
+              <Button
+                onClick={handleGenerateIdeas}
+                disabled={loadingStates.generatingIdeas || transcriptData.length === 0}
+                className="flex-1 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-2xl py-3 btn-blue-hover disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:transform-none"
+              >
+                {loadingStates.generatingIdeas ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Lightbulb className="w-5 h-5 mr-2" />
+                    Create Ideas
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Error Display for Ideas */}
+            {errorStates.ideasError && (
+              <div className="mt-4">
+                <Card className="bg-red-50 border-red-200 rounded-2xl p-4">
+                  <div className="flex items-center gap-3 text-red-700">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                    <p className="text-sm">{errorStates.ideasError}</p>
+                  </div>
+                </Card>
+              </div>
             )}
           </div>
-          <div className="flex gap-4 pt-4">
-            <Button className="flex-1 bg-green-500 text-white rounded-2xl py-3 btn-blue-hover">
-              <Download className="w-5 h-5 mr-2" />
-              Export Transcript
-            </Button>
-            <Button
-              onClick={handleGenerateIdeas}
-              disabled={loadingStates.generatingIdeas || transcriptData.length === 0}
-              className="flex-1 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-2xl py-3 btn-blue-hover disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:transform-none"
-            >
-              {loadingStates.generatingIdeas ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Lightbulb className="w-5 h-5 mr-2" />
-                  Create Ideas
-                </>
-              )}
-            </Button>
-          </div>
-
-          {/* Error Display for Ideas */}
-          {errorStates.ideasError && (
-            <div className="mt-4">
-              <Card className="bg-red-50 border-red-200 rounded-2xl p-4">
-                <div className="flex items-center gap-3 text-red-700">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                  <p className="text-sm">{errorStates.ideasError}</p>
-                </div>
-              </Card>
-            </div>
-          )}
         </DialogContent>
       </Dialog>
 
       {/* Ideas Modal */}
       <Dialog open={showIdeas} onOpenChange={setShowIdeas}>
-        <DialogContent className="max-w-6xl bg-white/90 backdrop-blur-xl border-white/30 text-slate-800 rounded-3xl z-50">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={() => {
-                  setShowTranscript(true)
-                  setShowIdeas(false)
-                }}
-                className="w-10 h-10 bg-white/40 backdrop-blur-xl border-white/30 rounded-xl p-0 btn-blue-hover"
-              >
-                <ArrowLeft className="w-5 h-5 text-slate-700" />
-              </Button>
-              <div className="flex-1">
-                <DialogTitle className="headline-modal">💡 Generated Ideas</DialogTitle>
-                <p className="text-sm text-slate-600 mt-1">
-                  Select an idea to generate content • {ideaData.length} ideas available
-                </p>
+        <DialogContent className="modal-fullscreen bg-white/90 backdrop-blur-xl border-white/30 text-slate-800 z-50">
+          <div className="modal-fullscreen-content p-6">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => {
+                    setShowTranscript(true)
+                    setShowIdeas(false)
+                  }}
+                  className="w-10 h-10 bg-white/40 backdrop-blur-xl border-white/30 rounded-xl p-0 btn-blue-hover"
+                >
+                  <ArrowLeft className="w-5 h-5 text-slate-700" />
+                </Button>
+                <div className="flex-1">
+                  <DialogTitle className="headline-modal">💡 Generated Ideas</DialogTitle>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Select an idea to generate content • {ideaData.length} ideas available
+                  </p>
+                </div>
               </div>
-            </div>
-          </DialogHeader>
-          <div className="overflow-x-auto">
+            </DialogHeader>
+            <div className="modal-fullscreen-body overflow-x-auto mt-6">
             <RadioGroup value={selectedIdeaId?.toString() || ""} onValueChange={handleIdeaSelection}>
               <table className="w-full">
                 <thead>
@@ -725,81 +767,83 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
                 </tbody>
               </table>
             </RadioGroup>
-          </div>
-          <div className="space-y-4 pt-4">
-            {/* Selection Status */}
-            {selectedIdea && (
-              <div className="bg-blue-50/50 border border-blue-200 rounded-2xl p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <div>
-                    <p className="text-sm font-medium text-blue-800">Selected Idea:</p>
-                    <p className="text-blue-700">{selectedIdea.mainIdea}</p>
-                    <p className="text-xs text-blue-600">Format: {selectedIdea.format}</p>
+            </div>
+            <div className="space-y-4 pt-4 mt-6">
+              {/* Selection Status */}
+              {selectedIdea && (
+                <div className="bg-blue-50/50 border border-blue-200 rounded-2xl p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <div>
+                      <p className="text-sm font-medium text-blue-800">Selected Idea:</p>
+                      <p className="text-blue-700">{selectedIdea.mainIdea}</p>
+                      <p className="text-xs text-blue-600">Format: {selectedIdea.format}</p>
+                    </div>
                   </div>
                 </div>
+              )}
+
+              <div className="flex gap-4">
+                <Button
+                  onClick={handleGenerateContent}
+                  disabled={loadingStates.generatingContent || !selectedIdea}
+                  className="w-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-purple-500/25 btn-blue-hover disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:transform-none"
+                >
+                  {loadingStates.generatingContent ? (
+                    <>
+                      <Loader2 className="w-6 h-6 mr-3 animate-spin" />
+                      Generating Content...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-6 h-6 mr-3" />
+                      {selectedIdea ? 'Generate Content' : 'Select an Idea First'}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Error Display for Content Generation */}
+            {errorStates.contentError && (
+              <div className="mt-4">
+                <Card className="bg-red-50 border-red-200 rounded-2xl p-4">
+                  <div className="flex items-center gap-3 text-red-700">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                    <p className="text-sm">{errorStates.contentError}</p>
+                  </div>
+                </Card>
               </div>
             )}
-
-            <div className="flex gap-4">
-              <Button
-                onClick={handleGenerateContent}
-                disabled={loadingStates.generatingContent || !selectedIdea}
-                className="w-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-purple-500/25 btn-blue-hover disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:transform-none"
-              >
-                {loadingStates.generatingContent ? (
-                  <>
-                    <Loader2 className="w-6 h-6 mr-3 animate-spin" />
-                    Generating Content...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-6 h-6 mr-3" />
-                    {selectedIdea ? 'Generate Content' : 'Select an Idea First'}
-                  </>
-                )}
-              </Button>
-            </div>
           </div>
-
-          {/* Error Display for Content Generation */}
-          {errorStates.contentError && (
-            <div className="mt-4">
-              <Card className="bg-red-50 border-red-200 rounded-2xl p-4">
-                <div className="flex items-center gap-3 text-red-700">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                  <p className="text-sm">{errorStates.contentError}</p>
-                </div>
-              </Card>
-            </div>
-          )}
         </DialogContent>
       </Dialog>
 
       {/* Content Modal */}
       <Dialog open={showContentModal} onOpenChange={setShowContentModal}>
-        <DialogContent className="max-w-4xl max-h-[80vh] bg-white/90 backdrop-blur-xl border-white/30 text-slate-800 rounded-3xl z-50">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={handleBackToIdeas}
-                className="w-10 h-10 bg-white/40 backdrop-blur-xl border-white/30 rounded-xl p-0 btn-blue-hover"
-              >
-                <ArrowLeft className="w-5 h-5 text-slate-700" />
-              </Button>
-              <div className="flex-1">
-                <DialogTitle className="headline-modal">
-                  Generated Content
-                </DialogTitle>
-                {selectedIdea && (
-                  <p className="text-sm text-slate-600 mt-1">
-                    Based on: <span className="font-medium text-slate-700">{selectedIdea.mainIdea}</span>
-                  </p>
-                )}
+        <DialogContent className="modal-fullscreen bg-white/90 backdrop-blur-xl border-white/30 text-slate-800 z-50">
+          <div className="modal-fullscreen-content p-6">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={handleBackToIdeas}
+                  className="w-10 h-10 bg-white/40 backdrop-blur-xl border-white/30 rounded-xl p-0 btn-blue-hover"
+                >
+                  <ArrowLeft className="w-5 h-5 text-slate-700" />
+                </Button>
+                <div className="flex-1">
+                  <DialogTitle className="headline-modal">
+                    Generated Content
+                  </DialogTitle>
+                  {selectedIdea && (
+                    <p className="text-sm text-slate-600 mt-1">
+                      Based on: <span className="font-medium text-slate-700">{selectedIdea.mainIdea}</span>
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          </DialogHeader>
-          <div className="space-y-6">
+            </DialogHeader>
+            <div className="modal-fullscreen-body space-y-6 mt-6">
             {/* Selected Idea Information */}
             {selectedIdea && (
               <Card className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 border-blue-200/50 rounded-2xl p-6">
@@ -872,8 +916,31 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
                   </div>
                 </div>
                 <div className="max-h-96 overflow-y-auto">
-                  <div className="text-slate-700 whitespace-pre-line leading-relaxed">
-                    {generatedContent}
+                  <div className="markdown-content">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        h1: ({children}) => <h1 className="text-2xl font-bold text-slate-800 mb-4 mt-6 first:mt-0">{children}</h1>,
+                        h2: ({children}) => <h2 className="text-xl font-bold text-slate-800 mb-3 mt-5 first:mt-0">{children}</h2>,
+                        h3: ({children}) => <h3 className="text-lg font-semibold text-slate-700 mb-2 mt-4 first:mt-0">{children}</h3>,
+                        h4: ({children}) => <h4 className="text-base font-semibold text-slate-700 mb-2 mt-3 first:mt-0">{children}</h4>,
+                        p: ({children}) => <p className="mb-3 text-slate-700 leading-relaxed">{children}</p>,
+                        ul: ({children}) => <ul className="list-disc list-inside mb-4 space-y-1 text-slate-700 pl-4">{children}</ul>,
+                        ol: ({children}) => <ol className="list-decimal list-inside mb-4 space-y-1 text-slate-700 pl-4">{children}</ol>,
+                        li: ({children}) => <li className="text-slate-700 leading-relaxed mb-1">{children}</li>,
+                        strong: ({children}) => <strong className="font-bold text-slate-800">{children}</strong>,
+                        em: ({children}) => <em className="italic text-slate-700">{children}</em>,
+                        code: ({children}) => <code className="bg-slate-100 text-slate-800 px-2 py-1 rounded text-sm font-mono">{children}</code>,
+                        pre: ({children}) => <pre className="bg-slate-100 text-slate-800 p-4 rounded-lg overflow-x-auto mb-4 text-sm font-mono border">{children}</pre>,
+                        blockquote: ({children}) => <blockquote className="border-l-4 border-blue-300 pl-4 py-2 italic text-slate-600 mb-4 bg-blue-50 rounded-r-lg">{children}</blockquote>,
+                        hr: () => <hr className="border-slate-300 my-6" />,
+                        table: ({children}) => <table className="w-full border-collapse border border-slate-300 mb-4 rounded-lg overflow-hidden">{children}</table>,
+                        th: ({children}) => <th className="border border-slate-300 px-3 py-2 bg-slate-100 font-semibold text-left">{children}</th>,
+                        td: ({children}) => <td className="border border-slate-300 px-3 py-2">{children}</td>,
+                      }}
+                    >
+                      {generatedContent}
+                    </ReactMarkdown>
                   </div>
                 </div>
               </Card>
@@ -897,18 +964,19 @@ Who else is ready to transform their workday? Drop a 🍅 if you're in!
               </Card>
             ) : null}
 
-            {/* Error Display for Content Generation */}
-            {errorStates.contentError && (
-              <Card className="bg-red-50 border-red-200 rounded-2xl p-4">
-                <div className="flex items-center gap-3 text-red-700">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium">Content Generation Failed</p>
-                    <p className="text-sm">{errorStates.contentError}</p>
+              {/* Error Display for Content Generation */}
+              {errorStates.contentError && (
+                <Card className="bg-red-50 border-red-200 rounded-2xl p-4">
+                  <div className="flex items-center gap-3 text-red-700">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium">Content Generation Failed</p>
+                      <p className="text-sm">{errorStates.contentError}</p>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            )}
+                </Card>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

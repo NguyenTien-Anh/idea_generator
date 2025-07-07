@@ -8,24 +8,38 @@ from dotenv import load_dotenv
 from google import genai
 from pydub import AudioSegment
 
+os.environ["PATH"] += os.pathsep + r"D:\ffmpeg-7.1.1-essentials_build\bin"
+
 load_dotenv()
 
-# Language-specific prompts (reusing from transcript.py)
-LANGUAGE_PROMPTS = {
-    'vietnamese': """Please transcribe the Vietnamese audio file with the following specifications:
+# STEP 1: Direct transcription prompts (original language)
+TRANSCRIPTION_PROMPTS = {
+    'vietnamese': """Please transcribe the Vietnamese audio file exactly as spoken with the following specifications:
 
 ## Format Requirements:
-- Use the exact format: `<time>start_time - end_time</time> spoken_content`
+- Use the exact format: `<remove>true/false</remove><time>start_time - end_time</time> spoken_content`
 - Time format: Use minutes:seconds format (e.g., 0:00, 1:30, 2:45)
 - Break down the transcription into natural speech segments
 - Each segment should typically be 10-30 seconds long, depending on natural speech pauses
 
-## Language Requirements:
-- Transcribe exactly what is spoken in Vietnamese
+## Quality Assessment:
+- Add `<remove>true</remove>` for low-quality segments that should be marked for removal
+- Add `<remove>false</remove>` for good-quality segments that should be kept
+- Mark as `<remove>true</remove>` if the segment contains:
+  * Filler words or hesitations (e.g., "ừ", "à", "ờm")
+  * Non-informative phrases (e.g., "Tôi đi vệ sinh", "Xin lỗi, để tôi nói lại", "3, 2, 1 bắt đầu")
+  * Apologies or interruptions that don't contribute to main discussion
+  * Repeated sentences or clear restarts
+  * Technical interruptions (e.g., "Nghe được không?", "Mic có hoạt động không?")
+  * Incomplete or broken sentences that don't convey meaning
+
+## TRANSCRIPTION REQUIREMENTS:
+- Transcribe EXACTLY what is spoken in Vietnamese
 - Use standard Vietnamese writing with proper diacritics (á, à, ả, ã, ạ, etc.)
-- Do not translate - keep the original Vietnamese text
 - Include natural speech elements like fillers, hesitations, and incomplete sentences if present
 - Pay attention to Vietnamese tone markers and accent marks
+- Maintain the speaker's original words and phrasing
+- Do NOT translate or modify the content - transcribe verbatim
 
 ## Timing Guidelines:
 - Be as accurate as possible with timing
@@ -34,34 +48,47 @@ LANGUAGE_PROMPTS = {
 
 ## Example Output Format:
 ```
-<time>0:00 - 0:15</time> Chào bạn, hôm nay thời tiết đẹp quá nhỉ?
-<time>0:15 - 0:30</time> Đúng vậy, trời nắng và mát mẻ.
-<time>0:30 - 0:45</time> Chúng ta đi dạo nhé?
-<time>0:45 - 1:00</time> Được thôi, ý kiến hay đấy.
+<remove>false</remove><time>0:00 - 0:15</time> Chào bạn, hôm nay thời tiết đẹp quá nhỉ?
+<remove>false</remove><time>0:15 - 0:30</time> Đúng vậy, trời nắng và mát mẻ.
+<remove>true</remove><time>0:30 - 0:32</time> Ừm, à...
+<remove>false</remove><time>0:33 - 0:45</time> Chúng ta đi dạo nhé?
+<remove>false</remove><time>0:45 - 1:00</time> Được thôi, ý kiến hay đấy.
 ```
 
 ## Additional Instructions:
-- If speech is unclear, use [không rõ] or [không nghe được]
+- If speech is unclear, use [không rõ] or [không nghe được] and mark as `<remove>true</remove>`
 - If there are multiple speakers, you may add speaker labels if needed (Người nói 1, Người nói 2)
 - Maintain consistent formatting throughout the entire transcription
 - Double-check timing accuracy for synchronization purposes
 - Be careful with Vietnamese regional accents and dialects - transcribe as accurately as possible
 - Include common Vietnamese interjections and particles (à, ơi, nhé, etc.) when present""",
 
-    'english': """Please transcribe the English audio file with the following specifications:
+    'english': """Please transcribe the English audio file exactly as spoken with the following specifications:
 
 ## Format Requirements:
-- Use the exact format: `<time>start_time - end_time</time> spoken_content`
+- Use the exact format: `<remove>true/false</remove><time>start_time - end_time</time> spoken_content`
 - Time format: Use minutes:seconds format (e.g., 0:00, 1:30, 2:45)
 - Break down the transcription into natural speech segments
 - Each segment should typically be 10-30 seconds long, depending on natural speech pauses
 
-## Language Requirements:
-- Transcribe exactly what is spoken in English
+## Quality Assessment:
+- Add `<remove>true</remove>` for low-quality segments that should be marked for removal
+- Add `<remove>false</remove>` for good-quality segments that should be kept
+- Mark as `<remove>true</remove>` if the segment contains:
+  * Filler words or hesitations (e.g., "uh", "um", "ah", "er", "like")
+  * Non-informative phrases (e.g., "I'm going to the bathroom", "Sorry, let me say that again")
+  * Apologies or interruptions that don't contribute to main discussion
+  * Repeated sentences or clear restarts
+  * Technical interruptions (e.g., "Can you hear me?", "Is my mic working?")
+  * Incomplete or broken sentences that don't convey meaning
+
+## TRANSCRIPTION REQUIREMENTS:
+- Transcribe EXACTLY what is spoken in English
 - Use standard English spelling and grammar
-- Do not translate - keep the original English text
 - Include natural speech elements like fillers, hesitations, and incomplete sentences if present
 - Maintain proper capitalization and punctuation
+- Preserve the speaker's original words and phrasing
+- Do NOT translate or modify the content - transcribe verbatim
 
 ## Timing Guidelines:
 - Be as accurate as possible with timing
@@ -70,14 +97,15 @@ LANGUAGE_PROMPTS = {
 
 ## Example Output Format:
 ```
-<time>0:00 - 0:15</time> Hello everyone, welcome to today's presentation.
-<time>0:15 - 0:30</time> We'll be discussing the latest market trends.
-<time>0:30 - 0:45</time> First, let's look at the quarterly results.
-<time>0:45 - 1:00</time> As you can see from this chart...
+<remove>false</remove><time>0:00 - 0:15</time> Hello everyone, welcome to today's presentation.
+<remove>false</remove><time>0:15 - 0:30</time> We'll be discussing the latest market trends.
+<remove>true</remove><time>0:30 - 0:32</time> Um, uh...
+<remove>false</remove><time>0:33 - 0:45</time> First, let's look at the quarterly results.
+<remove>false</remove><time>0:45 - 1:00</time> As you can see from this chart...
 ```
 
 ## Additional Instructions:
-- If speech is unclear, use [inaudible] or [unclear]
+- If speech is unclear, use [inaudible] or [unclear] and mark as `<remove>true</remove>`
 - If there are multiple speakers, you may add speaker labels if needed (Speaker 1, Speaker 2)
 - Maintain consistent formatting throughout the entire transcription
 - Double-check timing accuracy for synchronization purposes
@@ -86,19 +114,32 @@ LANGUAGE_PROMPTS = {
 - Use proper contractions when spoken (don't, won't, I'll, etc.)
 - For technical terms or proper nouns, ensure correct spelling""",
 
-    'japanese': """Please transcribe the Japanese audio file with the following specifications:
+    'japanese': """Please transcribe the Japanese audio file exactly as spoken with the following specifications:
 
 ## Format Requirements:
-- Use the exact format: `<time>start_time - end_time</time> spoken_content`
+- Use the exact format: `<remove>true/false</remove><time>start_time - end_time</time> spoken_content`
 - Time format: Use minutes:seconds format (e.g., 0:00, 1:30, 2:45)
 - Break down the transcription into natural speech segments
 - Each segment should typically be 10-30 seconds long, depending on natural speech pauses
 
-## Language Requirements:
-- Transcribe exactly what is spoken in Japanese
+## Quality Assessment:
+- Add `<remove>true</remove>` for low-quality segments that should be marked for removal
+- Add `<remove>false</remove>` for good-quality segments that should be kept
+- Mark as `<remove>true</remove>` if the segment contains:
+  * Filler words or hesitations (e.g., "あの", "えーと", "うーん", "ええ")
+  * Non-informative phrases (e.g., "トイレに行きます", "すみません、もう一度言わせてください")
+  * Apologies or interruptions that don't contribute to main discussion
+  * Repeated sentences or clear restarts
+  * Technical interruptions (e.g., "聞こえますか？", "マイクは動いていますか？")
+  * Incomplete or broken sentences that don't convey meaning
+
+## TRANSCRIPTION REQUIREMENTS:
+- Transcribe EXACTLY what is spoken in Japanese
 - Use standard Japanese writing (hiragana, katakana, and kanji as appropriate)
-- Do not translate - keep the original Japanese text
 - Include natural speech elements like particles, fillers, and incomplete sentences if present
+- Maintain the speaker's original words and phrasing
+- Do NOT translate or modify the content - transcribe verbatim
+- Pay attention to Japanese pronunciation and intonation
 
 ## Timing Guidelines:
 - Be as accurate as possible with timing
@@ -107,17 +148,105 @@ LANGUAGE_PROMPTS = {
 
 ## Example Output Format:
 ```
-<time>0:00 - 0:15</time> こんにちは、今日はいい天気ですね。
-<time>0:15 - 0:30</time> はい、そうですね。
-<time>0:30 - 0:45</time> 散歩に行きませんか？
-<time>0:45 - 1:00</time> いいですね。
+<remove>false</remove><time>0:00 - 0:15</time> こんにちは、今日はいい天気ですね。
+<remove>false</remove><time>0:15 - 0:30</time> はい、そうですね。
+<remove>true</remove><time>0:30 - 0:32</time> あの、えーと...
+<remove>false</remove><time>0:33 - 0:45</time> 散歩に行きませんか？
+<remove>false</remove><time>0:45 - 1:00</time> いいですね。
 ```
 
 ## Additional Instructions:
-- If speech is unclear, use [inaudible] or [unclear]
-- If there are multiple speakers, you may add speaker labels if needed
+- If speech is unclear, use [inaudible] or [unclear] and mark as `<remove>true</remove>`
+- If there are multiple speakers, you may add speaker labels if needed (話者1, 話者2)
 - Maintain consistent formatting throughout the entire transcription
-- Double-check timing accuracy for synchronization purposes"""
+- Double-check timing accuracy for synchronization purposes
+- Include Japanese particles and fillers when present
+- Handle Japanese keigo (honorific language) appropriately
+- For technical terms, use the appropriate Japanese writing system"""
+}
+
+# STEP 2: Translation prompts (to Vietnamese)
+TRANSLATION_PROMPTS = {
+    'english_to_vietnamese': """You are a professional translator. Translate the provided English transcript to natural Vietnamese while maintaining the exact format and timing.
+
+## TRANSLATION REQUIREMENTS:
+- Translate ALL English text to Vietnamese
+- Maintain the exact format: `<remove>true/false</remove><time>start_time - end_time</time> translated_content`
+- Keep all timestamps exactly as they are
+- Preserve the remove tags (true/false) without changes
+- Translate the content accurately while keeping it natural in Vietnamese
+
+## TRANSLATION GUIDELINES:
+- Use standard Vietnamese writing with proper diacritics (á, à, ả, ã, ạ, etc.)
+- Maintain natural Vietnamese speech patterns and expressions
+- Convert English filler words to Vietnamese equivalents (um → ừm, uh → à, etc.)
+- Translate technical terms appropriately, keeping commonly used English terms when appropriate
+- For proper nouns (names, places, brands), keep the original but add Vietnamese pronunciation if helpful
+- Preserve the speaker's tone and intent in Vietnamese
+- Ensure the Vietnamese translation sounds natural and conversational
+
+## EXAMPLE:
+Input:
+```
+<remove>false</remove><time>0:00 - 0:15</time> Hello everyone, welcome to today's presentation.
+<remove>true</remove><time>0:15 - 0:17</time> Um, uh...
+<remove>false</remove><time>0:18 - 0:30</time> We'll be discussing market trends.
+```
+
+Output:
+```
+<remove>false</remove><time>0:00 - 0:15</time> Xin chào mọi người, chào mừng đến với bài thuyết trình hôm nay.
+<remove>true</remove><time>0:15 - 0:17</time> Ừm, à...
+<remove>false</remove><time>0:18 - 0:30</time> Chúng ta sẽ thảo luận về các xu hướng thị trường.
+```
+
+## CRITICAL INSTRUCTIONS:
+- Do NOT modify timestamps
+- Do NOT change remove tags
+- Do NOT add or remove lines
+- ONLY translate the text content after the </time> tag
+- Maintain exact formatting and structure""",
+
+    'japanese_to_vietnamese': """You are a professional translator. Translate the provided Japanese transcript to natural Vietnamese while maintaining the exact format and timing.
+
+## TRANSLATION REQUIREMENTS:
+- Translate ALL Japanese text to Vietnamese
+- Maintain the exact format: `<remove>true/false</remove><time>start_time - end_time</time> translated_content`
+- Keep all timestamps exactly as they are
+- Preserve the remove tags (true/false) without changes
+- Translate the content accurately while keeping it natural in Vietnamese
+
+## TRANSLATION GUIDELINES:
+- Use standard Vietnamese writing with proper diacritics (á, à, ả, ã, ạ, etc.)
+- Maintain natural Vietnamese speech patterns and expressions
+- Convert Japanese filler words to Vietnamese equivalents (あの → à, えーと → ờm, etc.)
+- Handle Japanese honorifics and politeness levels appropriately in Vietnamese context
+- Translate Japanese cultural concepts and expressions to Vietnamese equivalents when possible
+- For Japanese names and places, provide Vietnamese pronunciation: 東京 → "Tokyo (Tô-ki-ô)"
+- Convert Japanese particles and speech patterns to natural Vietnamese equivalents
+- Preserve the speaker's tone and intent in Vietnamese
+
+## EXAMPLE:
+Input:
+```
+<remove>false</remove><time>0:00 - 0:15</time> こんにちは、今日はいい天気ですね。
+<remove>true</remove><time>0:15 - 0:17</time> あの、えーと...
+<remove>false</remove><time>0:18 - 0:30</time> 散歩に行きませんか？
+```
+
+Output:
+```
+<remove>false</remove><time>0:00 - 0:15</time> Xin chào, hôm nay thời tiết đẹp quá nhỉ?
+<remove>true</remove><time>0:15 - 0:17</time> À, ờm...
+<remove>false</remove><time>0:18 - 0:30</time> Chúng ta đi dạo nhé?
+```
+
+## CRITICAL INSTRUCTIONS:
+- Do NOT modify timestamps
+- Do NOT change remove tags
+- Do NOT add or remove lines
+- ONLY translate the text content after the </time> tag
+- Maintain exact formatting and structure"""
 }
 
 
@@ -169,42 +298,71 @@ class AudioSegmentTranscriber:
     
     def transcribe_segment(self, audio_segment: AudioSegment, language: str = 'vietnamese') -> str:
         """
-        Transcribe a single audio segment using Gemini API.
-        
+        Transcribe a single audio segment using two-step process: transcription then translation.
+
         Args:
             audio_segment: AudioSegment object to transcribe
             language: Language for transcription ('vietnamese', 'english', 'japanese')
-            
+
         Returns:
-            Transcribed text with timestamps
+            Transcribed text with timestamps in Vietnamese
         """
         try:
             # Create a temporary file for the segment
             with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_file:
                 audio_segment.export(temp_file.name, format="mp3")
                 temp_file_path = temp_file.name
-            
+
             try:
                 # Upload the segment to Gemini
                 uploaded_file = self.client.files.upload(file=temp_file_path)
-                
-                # Get the appropriate prompt for the language
-                prompt = LANGUAGE_PROMPTS.get(language, LANGUAGE_PROMPTS['vietnamese'])
-                
-                # Generate transcription
-                response = self.client.models.generate_content(
+
+                # STEP 1: Direct transcription in original language
+                transcription_prompt = TRANSCRIPTION_PROMPTS.get(language, TRANSCRIPTION_PROMPTS['vietnamese'])
+
+                print(f"Step 1: Transcribing in {language}...")
+                transcription_response = self.client.models.generate_content(
                     model="gemini-2.0-flash-lite",
-                    contents=[prompt, uploaded_file]
+                    contents=[transcription_prompt, uploaded_file]
                 )
-                
-                return response.text
-                
+
+                original_transcript = transcription_response.text
+                print(f"Step 1 complete: {len(original_transcript)} characters")
+
+                # STEP 2: Translation to Vietnamese (if not already Vietnamese)
+                if language == 'vietnamese':
+                    # Already in Vietnamese, return as-is
+                    print("Language is Vietnamese, skipping translation step")
+                    return original_transcript
+                else:
+                    # Translate to Vietnamese
+                    translation_key = f"{language}_to_vietnamese"
+                    translation_prompt = TRANSLATION_PROMPTS.get(translation_key)
+
+                    if translation_prompt:
+                        print(f"Step 2: Translating {language} to Vietnamese...")
+
+                        # Combine translation prompt with the original transcript
+                        full_translation_prompt = f"{translation_prompt}\n\nPlease translate the following transcript:\n\n{original_transcript}"
+
+                        translation_response = self.client.models.generate_content(
+                            model="gemini-2.0-flash-lite",
+                            contents=[full_translation_prompt]
+                        )
+
+                        vietnamese_transcript = translation_response.text
+                        print(f"Step 2 complete: {len(vietnamese_transcript)} characters")
+                        return vietnamese_transcript
+                    else:
+                        print(f"Warning: No translation prompt for {language}, returning original transcript")
+                        return original_transcript
+
             finally:
                 # Clean up temporary file
                 os.unlink(temp_file_path)
-                
+
         except Exception as e:
-            raise Exception(f"Error transcribing segment: {str(e)}")
+            raise Exception(f"Error in two-step transcription: {str(e)}")
     
     def parse_timestamp(self, timestamp_str: str) -> int:
         """
@@ -290,8 +448,8 @@ class AudioSegmentTranscriber:
                 raise FileNotFoundError(f"Audio file not found: {audio_file_path}")
             
             # Validate language
-            if language not in LANGUAGE_PROMPTS:
-                raise ValueError(f"Unsupported language: {language}. Supported: {list(LANGUAGE_PROMPTS.keys())}")
+            if language not in TRANSCRIPTION_PROMPTS:
+                raise ValueError(f"Unsupported language: {language}. Supported: {list(TRANSCRIPTION_PROMPTS.keys())}")
             
             print(f"Starting transcription of {audio_file_path}")
             print(f"Language: {language}")

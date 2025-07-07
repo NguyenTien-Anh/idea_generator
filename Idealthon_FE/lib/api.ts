@@ -104,9 +104,17 @@ async function apiRequest<T>(
 }
 
 // File upload function for video transcript
-export async function uploadVideoForTranscript(file: File): Promise<TranscriptResponse> {
+export async function uploadVideoForTranscript(
+  file: File,
+  language?: string
+): Promise<TranscriptResponse> {
   const formData = new FormData();
   formData.append('file', file);
+
+  // Add language parameter if provided, otherwise default to 'auto'
+  const selectedLanguage = language !== undefined && language !== null ? language : 'auto';
+  console.log("selectedLanguage: ", selectedLanguage);
+  formData.append('language', selectedLanguage);
 
   const response = await fetch(`${API_BASE_URL}/video-transcript`, {
     method: 'POST',
@@ -165,13 +173,12 @@ export function transformIdeaData(apiData: IdeaItem[]): FrontendIdeaItem[] {
 }
 
 // Transform frontend transcript data back to API format for idea generation
-export function transformTranscriptForIdeaGeneration(frontendData: FrontendTranscriptItem[]): { timestamp: string; transcript: string }[] {
-  return frontendData
-    .filter(item => !item.removed) // Only include non-removed items
-    .map(item => ({
-      timestamp: item.timeline,
-      transcript: item.text,
-    }));
+export function transformTranscriptForIdeaGeneration(frontendData: FrontendTranscriptItem[]): { timestamp: string; transcript: string; remove: boolean }[] {
+  return frontendData.map(item => ({
+    timestamp: item.timeline,
+    transcript: item.text,
+    remove: item.removed, // Include the remove field for AI quality assessment
+  }));
 }
 
 // Utility functions
