@@ -2,7 +2,19 @@
 
 A full-stack application that transforms video/audio content into actionable content ideas and generates various types of content from transcripts. The platform uses AI to analyze speech, extract key insights, and generate content suggestions for different formats.
 
-## 🚀 Features
+## 📸 Application Overview
+
+![Application Demo](./public/demo.gif)
+
+*Complete workflow demonstration: From audio upload to content generation*
+
+## � Application Overview
+
+![Application Demo](./public/demo.gif)
+
+*Complete workflow demonstration: From audio upload to content generation*
+
+## �🚀 Features
 
 ### Core Functionality
 - **Video/Audio Upload**: Support for multiple video and audio formats (MP4, AVI, MOV, MP3, WAV, etc.)
@@ -102,6 +114,38 @@ npm run dev
 ```
 The web application will be available at `http://localhost:3000`
 
+## 🎮 Quick Start Tutorial
+
+### Getting Started in 5 Minutes
+
+1. **Launch the Application**
+   ```bash
+   # Terminal 1: Start Backend
+   cd Idealthon_BE && python main.py
+
+   # Terminal 2: Start Frontend
+   cd Idealthon_FE && npm run dev
+   ```
+
+2. **Access the Interface**
+   - Open your browser to `http://localhost:3000`
+   - You'll see the main dashboard with the upload interface
+
+3. **Upload Your First File**
+   - Click the upload area or drag-and-drop a video/audio file
+   - Supported formats: MP4, AVI, MOV, MP3, WAV, and more
+   - Wait for the transcription to complete
+
+4. **Generate Ideas**
+   - Review the generated transcript (edit if needed)
+   - Click "Generate Ideas" to analyze your content
+   - Browse through AI-suggested content ideas
+
+5. **Create Content**
+   - Select an idea that interests you
+   - Choose your preferred content format
+   - Get detailed creation guidelines and copy the results
+
 ## 📚 API Documentation
 
 ### Endpoints
@@ -150,6 +194,47 @@ Visit `http://localhost:8000/docs` for interactive API documentation (Swagger UI
 3. **Generate Ideas**: AI analyzes the transcript and suggests content ideas
 4. **Select Format**: Choose the desired content format (blog, post, video, infographic)
 5. **Generate Content**: Get detailed content creation guidelines
+
+## 🖥️ User Interface Guide
+
+### Main Dashboard
+![Main Interface](./public/main_ui.png)
+
+The main dashboard provides an elegant, modern interface with:
+- **Header Section**: Application branding with search functionality and user controls
+- **Featured Card**: Central workspace for audio content processing
+- **Navigation**: Intuitive layout with gradient backgrounds and glass-morphism design
+- **Status Indicators**: Real-time feedback on processing status
+
+### Step 1: Upload & Transcript Generation
+![Transcript Generation](./public/generate_transcript_ui.png)
+
+The transcript generation interface allows you to:
+- **File Upload**: Drag-and-drop or browse to select video/audio files
+- **Format Support**: Multiple formats including MP4, AVI, MOV, MP3, WAV, and more
+- **Progress Tracking**: Real-time upload and processing status
+- **Transcript Review**: View timestamped transcript with editing capabilities
+- **Language Support**: Vietnamese, English, and Japanese transcription
+
+### Step 2: AI-Powered Idea Generation
+![Ideas Generation](./public/generate_ideas_ui.png)
+
+The ideas generation screen features:
+- **Transcript Analysis**: AI processes your content to extract key insights
+- **Idea Categories**: Organized suggestions for different content types
+- **Interactive Selection**: Click on ideas to explore further details
+- **Format Recommendations**: Suggested content formats based on your content
+- **Refinement Options**: Edit and customize generated ideas
+
+### Step 3: Content Creation
+![Content Generation](./public/generate_content_ui.png)
+
+The content generation interface provides:
+- **Format Selection**: Choose from blog posts, social media, videos, or infographics
+- **Detailed Guidelines**: Comprehensive content creation instructions
+- **Markdown Support**: Rich text formatting for better readability
+- **Export Options**: Copy or download generated content
+- **Multi-language Output**: Content generation in Vietnamese and English
 
 ## 🔧 Configuration
 
@@ -209,6 +294,26 @@ npm run build
 
 This project is part of the Ideathon competition and follows the competition's licensing terms.
 
+## 💡 Tips for Best Results
+
+### Content Upload Tips
+- **Audio Quality**: Use clear, high-quality audio for better transcription accuracy
+- **File Size**: Optimal file size is under 100MB for faster processing
+- **Language**: Specify the primary language of your content for better results
+- **Background Noise**: Minimize background noise for cleaner transcripts
+
+### Idea Generation Tips
+- **Review Transcripts**: Always review and edit transcripts before generating ideas
+- **Content Length**: Longer content (5+ minutes) typically generates more diverse ideas
+- **Clear Speech**: Content with clear, structured speech produces better ideas
+- **Topic Focus**: Content focused on specific topics yields more actionable suggestions
+
+### Content Creation Tips
+- **Format Selection**: Choose formats that match your intended platform and audience
+- **Customization**: Use generated content as a starting point and customize for your brand
+- **Multi-format**: Generate multiple formats from the same idea for cross-platform use
+- **Language Preference**: Specify your target language for culturally appropriate content
+
 ## 🆘 Troubleshooting
 
 ### Common Issues
@@ -229,12 +334,42 @@ This project is part of the Ideathon competition and follows the competition's l
    - Ensure backend is running on port 8000
    - Check CORS configuration in main.py
 
+5. **Transcription quality issues**
+   - Ensure audio is clear and audible
+   - Check if the correct language is being detected
+   - Try re-uploading with better audio quality
+
+6. **Slow processing**
+   - Large files may take longer to process
+   - Check your internet connection for API calls
+   - Ensure sufficient system resources are available
+
 ### Getting Help
 
 For additional support or questions:
 - Check the API documentation at `http://localhost:8000/docs`
 - Review the audio processing documentation in `Idealthon_BE/README_cut_audio.md`
 - Open an issue in the repository
+
+## 📱 Interface Features
+
+### Modern Design Elements
+- **Glass-morphism UI**: Translucent cards with backdrop blur effects
+- **Gradient Backgrounds**: Beautiful color transitions throughout the interface
+- **Responsive Design**: Optimized for desktop and mobile devices
+- **Dark/Light Themes**: Automatic theme adaptation based on system preferences
+
+### User Experience Features
+- **Drag & Drop**: Intuitive file upload with visual feedback
+- **Progress Indicators**: Real-time status updates during processing
+- **Interactive Elements**: Hover effects and smooth animations
+- **Accessibility**: Keyboard navigation and screen reader support
+
+### Technical Features
+- **Real-time Updates**: Live status updates during processing
+- **Error Handling**: Graceful error messages and recovery options
+- **Performance Optimization**: Efficient loading and caching strategies
+- **Cross-browser Support**: Compatible with modern web browsers
 
 ## 🔮 Future Enhancements
 
